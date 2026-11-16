@@ -32,12 +32,12 @@ private final class RenderState {
     /// 並べ替えたあとのプレーナ（capacity * 2）。L が前半、R が後半。
     let planar: UnsafeMutablePointer<Float>
     /// フィルタは AudioIO が持っているものを借りる。UI から触るため。
-    let lpf: LowPass
+    let equalizer: RealtimeStereoEqualizer
 
-    init(capacity: Int, sampleRate: Double, lpf: LowPass) {
+    init(capacity: Int, sampleRate: Double, equalizer: RealtimeStereoEqualizer) {
         self.capacity = capacity
         self.sampleRate = sampleRate
-        self.lpf = lpf
+        self.equalizer = equalizer
         interleaved = .allocate(capacity: capacity * 2)
         planar = .allocate(capacity: capacity * 2)
         interleaved.initialize(repeating: 0, count: capacity * 2)
@@ -63,8 +63,8 @@ final class AudioIO: ObservableObject {
     private var node: AVAudioSourceNode?
     private var render: RenderState?
 
-    /// UI から触るローパス。engine を組み直しても同じものを使い回す。
-    let lpf = LowPass()
+    /// The existing NEXUS real-time DSP engine. Control changes are queued from the main thread.
+    private let equalizer = RealtimeStereoEqualizer()
 
     private static let capacity = 4096
 
@@ -79,10 +79,6 @@ final class AudioIO: ObservableObject {
     /// 出力先が仮想デバイス Passthrough のままか。鎖が自分に戻っている。
     @Published var loopback = false
 
-    /// カットオフ（Hz）。スライダはこれを対数で動かす。
-    @Published var cutoff: Double = 20000 {
-        didSet { lpf.cutoff = Float(cutoff) }
-    }
 
     /// 中断中は再開しない。中断中の setActive(true) は失敗するだけなので、
     /// tick が叩き続けることになる。
@@ -98,7 +94,6 @@ final class AudioIO: ObservableObject {
         if !MDPLinkReceiver.shared.start() {
             status = "Cannot open the listening socket"
         }
-        lpf.cutoff = Float(cutoff)
         observeSession()
     }
 
@@ -237,8 +232,11 @@ final class AudioIO: ObservableObject {
         // 止めると打つ手が無くなるので鳴らすが、黙って進めない。
         let rateOK = abs(sr - 48000) < 1
 
-        let state = RenderState(capacity: Self.capacity, sampleRate: sr, lpf: lpf)
-        lpf.reset()
+        guard let equalizer else {
+            status = "NEXUS DSP could not be initialized"
+            return
+        }
+        let state = RenderState(capacity: Self.capacity, sampleRate: sr, equalizer: equalizer)
         render = state
 
         // **standardFormat は非インターリーブ（プレーナ）。**
@@ -261,8 +259,12 @@ final class AudioIO: ObservableObject {
                 p[n + i] = s[i * 2 + 1]
             }
 
-            // 3. ローパスを通す。
-            state.lpf.process(p, frames: n, sampleRate: Float(state.sampleRate))
+            // 3. Run the NEXUS ten-band real-time equalizer in place.
+            state.equalizer.processPlanar(
+                left: p,
+                right: p.advanced(by: n),
+                frameCount: n
+            )
 
             // 4. 出力へ書く。**面ごとに書く。**
             //
@@ -325,13 +327,25 @@ final class AudioIO: ObservableObject {
         log.notice("start sr=\(sr) route=\(self.route, privacy: .public)")
     }
 
+    /// UI/control-thread parameter updates. Keep all producer calls serialized on the main actor.
+    func setBandGain(index: Int, gainDB: Double) {
+        _ = equalizer?.setBand(index: index, gainDB: gainDB, sampleRate: 48_000)
+    }
+
+    func setOutputGain(gainDB: Double) {
+        _ = equalizer?.setOutputGainDB(gainDB)
+    }
+
+    func setBypassed(_ bypassed: Bool) {
+        _ = equalizer?.setBypassed(bypassed)
+    }
+
     func stop(keepListening: Bool = false) {
         if let src = node { engine.detach(src) }
         node = nil
         engine.stop()
         try? AVAudioSession.sharedInstance().setActive(false)
         if !keepListening { MDPLinkReceiver.shared.stop() }
-        lpf.reset()
         render = nil
         // start() は毎回ここを通るので、同じ値を書かない（publish が増えるだけ）。
         if running { running = false }
