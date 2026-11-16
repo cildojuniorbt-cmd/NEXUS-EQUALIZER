@@ -53,14 +53,53 @@ struct EqualizerView: View {
     }
 
     private var statusPanel: some View {
-        HStack(spacing: 12) {
-            Circle().fill(audioIO.running ? Color.green : Color.orange).frame(width: 8, height: 8)
-            VStack(alignment: .leading, spacing: 3) {
-                Text("MODO DE CONTROLE").font(.system(size: 10, weight: .bold)).tracking(1.5).foregroundStyle(.white.opacity(0.5))
-                Text(audioIO.status).font(.system(size: 13, weight: .medium)).foregroundStyle(.white).lineLimit(2)
+        VStack(alignment: .leading, spacing: 11) {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(audioIO.loopback ? Color.red : (audioIO.running ? Color.green : Color.orange))
+                    .frame(width: 8, height: 8)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("MODO DE CONTROLE")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(1.5)
+                        .foregroundStyle(.white.opacity(0.5))
+                    Text(audioIO.loopback ? "Saída em loop. Escolha o alto-falante ou fone." : audioIO.status)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(audioIO.loopback ? .red : .white)
+                        .lineLimit(2)
+                }
+                Spacer()
+                Text("iOS 27").font(.caption.bold()).foregroundStyle(.cyan)
             }
-            Spacer()
-            Text("iOS").font(.caption.bold()).foregroundStyle(.cyan)
+
+            Rectangle().fill(.white.opacity(0.08)).frame(height: 1)
+
+            HStack {
+                Label(audioIO.hasPeer ? "Extensão conectada" : "Aguardando extensão",
+                      systemImage: audioIO.hasPeer ? "link" : "link.slash")
+                Spacer()
+                Text(audioIO.route)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(.white.opacity(0.68))
+
+            HStack {
+                Text("ÁUDIO RECEBIDO")
+                Spacer()
+                Text("\(audioIO.received.formatted()) frames")
+                    .monospacedDigit()
+            }
+            .font(.system(size: 9, weight: .semibold))
+            .foregroundStyle(.white.opacity(0.42))
+
+            if audioIO.loopback {
+                Text("O áudio está voltando para a entrada virtual e pode ficar sem saída audível. Selecione a saída física no seletor do iOS.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.red.opacity(0.9))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(15)
         .background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 16))
