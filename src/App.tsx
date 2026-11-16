@@ -5,6 +5,7 @@ const FREQUENCIES = [20,25,31.5,40,50,63,80,100,125,160,200,250,315,400,500,630,
 const PARAM_FREQS = [32,64,125,250,500,1000,2000,4000,8000,16000];
 
 type Preset = 'Flat' | 'Bass Boost' | 'Vocal' | 'Bright' | 'Warm';
+type UserPreset = { values:number[]; paramValues:number[]; paramFrequencies:number[]; paramQs:number[]; paramTypes:BiquadFilterType[]; output:number; highPassEnabled:boolean; lowPassEnabled:boolean; highPassFrequency:number; lowPassFrequency:number; compressorEnabled:boolean; threshold:number; ratio:number };
 
 export default function App() {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -43,6 +44,8 @@ export default function App() {
   const [preset, setPreset] = useState<Preset>('Flat');
   const [message, setMessage] = useState('Carregue uma música para começar');
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [customPresets, setCustomPresets] = useState<Record<string, UserPreset>>({});
+  const [presetName, setPresetName] = useState('');
 
   const bars = useMemo(() => Array.from({ length: 36 }, (_, i) => 12 + ((i * 17) % 54)), []);
 
@@ -136,6 +139,7 @@ export default function App() {
         if (Array.isArray(data.paramFrequencies) && data.paramFrequencies.length === PARAM_FREQS.length) setParamFrequencies(data.paramFrequencies as number[]);
         if (Array.isArray(data.paramQs) && data.paramQs.length === PARAM_FREQS.length) setParamQs(data.paramQs as number[]);
         if (Array.isArray(data.paramTypes) && data.paramTypes.length === PARAM_FREQS.length) setParamTypes(data.paramTypes as BiquadFilterType[]);
+        if (data.customPresets && typeof data.customPresets === 'object') setCustomPresets(data.customPresets as Record<string, UserPreset>);
         if (typeof data.output === 'number') setOutput(data.output);
         if (typeof data.highPassEnabled === 'boolean') setHighPassEnabled(data.highPassEnabled);
         if (typeof data.lowPassEnabled === 'boolean') setLowPassEnabled(data.lowPassEnabled);
@@ -157,12 +161,12 @@ export default function App() {
     if (!settingsLoaded) return;
     try {
       localStorage.setItem('nexus-equalizer-settings-v1', JSON.stringify({
-        values, paramValues, paramFrequencies, paramQs, paramTypes, output, threshold, ratio, enabled, compressorEnabled, highPassEnabled, lowPassEnabled, highPassFrequency, lowPassFrequency, preset
+        values, paramValues, paramFrequencies, paramQs, paramTypes, customPresets, output, threshold, ratio, enabled, compressorEnabled, highPassEnabled, lowPassEnabled, highPassFrequency, lowPassFrequency, preset
       }));
     } catch {
       // Audio processing remains available when storage is unavailable.
     }
-  }, [settingsLoaded, values, paramValues, paramFrequencies, paramQs, paramTypes, output, threshold, ratio, enabled, compressorEnabled, highPassEnabled, lowPassEnabled, highPassFrequency, lowPassFrequency, preset]);
+  }, [settingsLoaded, values, paramValues, paramFrequencies, paramQs, paramTypes, customPresets, output, threshold, ratio, enabled, compressorEnabled, highPassEnabled, lowPassEnabled, highPassFrequency, lowPassFrequency, preset]);
 
   useEffect(() => {
     filtersRef.current.forEach((filter, index) => {
@@ -324,6 +328,33 @@ export default function App() {
     setParamTypes(current => current.map((v, i) => i === index ? value : v));
   }
 
+  function saveCustomPreset() {
+    const name = presetName.trim();
+    if (!name) return;
+    setCustomPresets(current => ({
+      ...current,
+      [name]: {
+        values: [...values], paramValues: [...paramValues], paramFrequencies: [...paramFrequencies],
+        paramQs: [...paramQs], paramTypes: [...paramTypes], output, highPassEnabled, lowPassEnabled,
+        highPassFrequency, lowPassFrequency, compressorEnabled, threshold, ratio
+      }
+    }));
+    setPresetName('');
+    setMessage('Preset personalizado salvo neste dispositivo.');
+  }
+
+  function loadCustomPreset(name: string) {
+    const profile = customPresets[name];
+    if (!profile) return;
+    setValues(profile.values); setParamValues(profile.paramValues);
+    setParamFrequencies(profile.paramFrequencies); setParamQs(profile.paramQs);
+    setParamTypes(profile.paramTypes); setOutput(profile.output);
+    setHighPassEnabled(profile.highPassEnabled); setLowPassEnabled(profile.lowPassEnabled);
+    setHighPassFrequency(profile.highPassFrequency); setLowPassFrequency(profile.lowPassFrequency);
+    setCompressorEnabled(profile.compressorEnabled); setThreshold(profile.threshold); setRatio(profile.ratio);
+    setMessage('Preset carregado: ' + name);
+  }
+
   function formatTime(seconds: number) {
     if (!Number.isFinite(seconds)) return '0:00';
     const minutes = Math.floor(seconds / 60);
@@ -367,6 +398,8 @@ export default function App() {
       <section className="presets-card"><div className="section-heading"><div><p className="section-kicker">PROCESSAMENTO DINÂMICO</p><h2>Compressor</h2></div><button className={'power-button ' + (compressorEnabled ? 'on' : '')} onClick={() => setCompressorEnabled(v => !v)}><Power size={16}/> {compressorEnabled ? 'ON' : 'OFF'}</button></div><p className="module-copy">Controle a dinâmica e reduza picos. O compressor não aumenta automaticamente o volume percebido.</p><div className="dynamics-grid"><label>LIMIAR <strong>{threshold} dB</strong><input type="range" min="-60" max="0" step="1" value={threshold} onChange={e => setThreshold(Number(e.target.value))}/></label><label>PROPORÇÃO <strong>{ratio.toFixed(1)}:1</strong><input type="range" min="1" max="12" step="0.5" value={ratio} onChange={e => setRatio(Number(e.target.value))}/></label></div></section>
 
       <section className="presets-card"><div className="section-heading"><div><p className="section-kicker">AJUSTE RÁPIDO</p><h2>Presets de som</h2></div></div><div className="preset-list">{(['Flat','Bass Boost','Vocal','Bright','Warm'] as Preset[]).map(item => <button key={item} className={preset === item ? 'preset active-preset' : 'preset'} onClick={() => applyPreset(item)}>{item}</button>)}</div></section>
+      <section className="presets-card"><div className="section-heading"><div><p className="section-kicker">SUA BIBLIOTECA</p><h2>Presets personalizados</h2></div></div><div className="save-preset-row"><input aria-label="Nome do preset" placeholder="Nome do novo preset" value={presetName} maxLength={28} onChange={e => setPresetName(e.target.value)}/><button className="save-preset-button" disabled={!presetName.trim()} onClick={saveCustomPreset}>Salvar perfil</button></div><div className="custom-preset-list">{Object.keys(customPresets).map(name => <div className="custom-preset" key={name}><button onClick={() => loadCustomPreset(name)}>{name}</button><button className="delete-preset" aria-label={'Excluir preset ' + name} onClick={() => setCustomPresets(current => { const next = {...current}; delete next[name]; return next; })}>×</button></div>)}</div><p className="module-copy">Seus perfis ficam salvos localmente neste navegador.</p></section>
+
       <footer><span>NEXUS EQUALIZER</span><span>WEB AUDIO ENGINE · PREVIEW 0.1.0</span></footer>
     </main>
   );
