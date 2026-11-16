@@ -15,9 +15,10 @@ The initial Media Device / Audio Server Plug-In passthrough foundation is adapte
 ## Current status
 - Source foundation and XcodeGen target are present.
 - The existing NEXUS DSP is wired into the app-side planar audio callback.
-- This has not yet passed the Xcode 27 build or physical-iPhone validation.
+- The complete iOS app and extension targets passed the Xcode 27 device-SDK build in GitHub Actions (run `43888724637`, commit `35c1e2a5bd417aa467a8da336ad7c2ed82210038`).
+- Physical-iPhone validation is still pending; a successful compile does not prove that iOS will publish the virtual output or route third-party app audio.
 - The extension entitlement requires a matching Apple Developer App ID/profile capability. A repository build alone does not prove signing or App Store approval.
-- The user must select NEXUS EQUALIZER in the iOS audio output picker's audio output picker. The system route can vary by source app and media mode.
+- The user must select NEXUS EQUALIZER in the iOS audio output picker. The system route can vary by source app and media mode.
 - Do not claim audio is being processed until the app reports a live bridge and the output is confirmed audibly changed.
 
 ## Important safety/quality gates
