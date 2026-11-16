@@ -11,10 +11,14 @@ The app attempts to instantiate Android's legacy `Equalizer` effect on output-mi
 The UI must distinguish `Available and controlled`, `Unavailable on this device`, and `Control owned elsewhere`. A successful object construction alone is not proof that every app is routed through it.
 
 ## iOS
-A third-party iOS app cannot globally intercept or process audio rendered by unrelated apps. Supported options:
-1. Process audio routed through NEXUS's own AVAudioEngine graph.
-2. Ship an AUv3 Audio Unit Extension for compatible host apps (DAWs, audio hosts, etc.).
-3. Offer device/headphone profiles and configuration tools, without claiming they alter other apps' output.
+On iOS 27, the Media Device framework adds a supported route for a third-party app to present a virtual audio output. When the user selects that output in Control Center, the system can route real-time audio samples to a `MediaDeviceExtension` conforming to `RealtimeSampleHandling`. Apple requires an Audio Server Plug-In to receive the mixed samples. NEXUS can process those samples and render them to the prior physical output.
+
+This is distinct from AUv3, which processes audio inside compatible host apps. The Media Device route requires iOS 27, a Media Device Extension, the required entitlement, and an Audio Server Plug-In. It must be tested on physical devices; some source apps or media states may reject or interrupt the route. See `../ios/IOS27-SYSTEM-AUDIO-ROUTING.md`.
+
+Supported paths:
+1. iOS 27 system-audio routing when NEXUS is selected as the output and the source app/system permits it.
+2. AUv3 plugin inside compatible hosts.
+3. Audio processing inside NEXUS itself.
 
 ## Acceptance tests
 - Android: test Spotify, YouTube, browser playback, local media, wired headphones, Bluetooth, speaker, background playback, process restart, and at least two OEM families. Record exact model/OS and whether the sound changes.
