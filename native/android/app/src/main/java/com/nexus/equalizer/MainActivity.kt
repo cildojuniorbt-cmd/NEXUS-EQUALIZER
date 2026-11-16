@@ -4,6 +4,7 @@ import android.app.Activity
 import android.os.Bundle
 import android.view.Gravity
 import android.widget.LinearLayout
+import android.widget.HorizontalScrollView
 import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.TextView
@@ -14,6 +15,7 @@ class MainActivity : Activity() {
     private val preferences by lazy { getSharedPreferences("nexus-eq", MODE_PRIVATE) }
     private lateinit var statusText: TextView
     private lateinit var bandsContainer: LinearLayout
+    private lateinit var presetsContainer: LinearLayout
     private lateinit var enableSwitch: Switch
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,10 +63,24 @@ class MainActivity : Activity() {
             setPadding(18, 16, 18, 16)
             setOnClickListener { refreshEffect() }
         }
+        presetsContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
         bandsContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.addView(statusText)
         root.addView(enableSwitch)
         root.addView(refresh)
+        root.addView(TextView(this).apply {
+            text = "PRESETS"
+            textSize = 12f
+            setTextColor(0xFF5DE1E6.toInt())
+            setPadding(0, 22, 0, 8)
+        })
+        root.addView(HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            addView(presetsContainer)
+        })
         root.addView(bandsContainer)
         setContentView(root)
     }
@@ -73,6 +89,7 @@ class MainActivity : Activity() {
         val status = equalizer.connect()
         statusText.text = status.message
         bandsContainer.removeAllViews()
+        presetsContainer.removeAllViews()
         val available = status.state == SystemEqualizerController.State.AVAILABLE_AND_CONTROLLED
         enableSwitch.setOnCheckedChangeListener(null)
         enableSwitch.isEnabled = available
@@ -97,6 +114,22 @@ class MainActivity : Activity() {
             return
         }
 
+        EqPreset.values().forEach { preset ->
+            val chip = TextView(this).apply {
+                text = preset.title
+                textSize = 13f
+                setTextColor(0xFF11151B.toInt())
+                setBackgroundColor(0xFF5DE1E6.toInt())
+                setPadding(18, 12, 18, 12)
+                setOnClickListener { applyPreset(preset, status.bandCount) }
+            }
+            val params = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginEnd = 10 }
+            presetsContainer.addView(chip, params)
+        }
+
         for (index in 0 until status.bandCount) {
             val frequency = equalizer.centerFrequencyHz(index)
             val label = TextView(this).apply {
@@ -119,6 +152,26 @@ class MainActivity : Activity() {
             }
             bandsContainer.addView(label)
             bandsContainer.addView(slider)
+        }
+    }
+
+
+    private fun applyPreset(preset: EqPreset, bandCount: Int) {
+        var allApplied = true
+        for (index in 0 until bandCount) {
+            val frequency = equalizer.centerFrequencyHz(index)
+            if (frequency == null) {
+                allApplied = false
+                continue
+            }
+            val gainMb = (EqPreset.gainAt(preset, frequency.toDouble()) * 100.0).toInt()
+            if (!equalizer.setBandLevel(index, gainMb)) allApplied = false
+        }
+        if (allApplied) {
+            preferences.edit().putString("preset", preset.name).apply()
+            statusText.text = "Preset ${preset.title} aplicado às bandas disponíveis do aparelho."
+        } else {
+            statusText.text = "Não foi possível aplicar todas as bandas. O controle pode ter sido perdido."
         }
     }
 
