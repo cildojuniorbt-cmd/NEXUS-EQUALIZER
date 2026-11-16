@@ -66,6 +66,7 @@ final class AudioIO: ObservableObject {
 
     /// The existing NEXUS real-time DSP engine. Control changes are queued from the main thread.
     private let equalizer = RealtimeStereoEqualizer()
+    private var bandGainsDB = Array(repeating: 0.0, count: 10)
 
     private static let capacity = 4096
 
@@ -237,6 +238,9 @@ final class AudioIO: ObservableObject {
             status = "NEXUS DSP could not be initialized"
             return
         }
+        for (index, gain) in bandGainsDB.enumerated() {
+            _ = equalizer.setBand(index: index, gainDB: gain, sampleRate: sr)
+        }
         let state = RenderState(capacity: Self.capacity, sampleRate: sr, equalizer: equalizer)
         render = state
 
@@ -330,7 +334,9 @@ final class AudioIO: ObservableObject {
 
     /// UI/control-thread parameter updates. Keep all producer calls serialized on the main actor.
     func setBandGain(index: Int, gainDB: Double) {
-        _ = equalizer?.setBand(index: index, gainDB: gainDB, sampleRate: 48_000)
+        guard bandGainsDB.indices.contains(index) else { return }
+        bandGainsDB[index] = gainDB
+        _ = equalizer?.setBand(index: index, gainDB: gainDB, sampleRate: sampleRate)
     }
 
     func setOutputGain(gainDB: Double) {
