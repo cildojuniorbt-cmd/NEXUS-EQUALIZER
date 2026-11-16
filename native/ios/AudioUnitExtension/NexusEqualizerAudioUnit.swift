@@ -3,7 +3,7 @@ import AudioToolbox
 import NexusEqualizerCore
 
 /// AUv3 stereo effect. Add this file to an Xcode Audio Unit Extension target
-/// whose principal class is NexusEqualizerAudioUnit.
+/// whose principal factory class is NexusEqualizerAudioUnitFactory.
 public final class NexusEqualizerAudioUnit: AUAudioUnit {
     private enum Address {
         static let bypass: AUParameterAddress = 0
@@ -29,6 +29,8 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
         )!
         inputBus = try AUAudioUnitBus(format: format)
         outputBus = try AUAudioUnitBus(format: format)
+        inputBus.supportedChannelCounts = [1, 2]
+        outputBus.supportedChannelCounts = [1, 2]
         try super.init(componentDescription: componentDescription, options: options)
 
         inputBusses = AUAudioUnitBusArray(audioUnit: self, busType: .input, busses: [inputBus])
