@@ -171,6 +171,6 @@ export default function App() {
       <p className="module-copy">Seus ajustes ficam salvos neste navegador.</p>
     </section>
 
-    <footer><span>NEXUS EQUALIZER</span><span>WEB CONTROL · VERSÃO 0.1.0</span></footer>
+    <footer><span>NEXUS EQUALIZER</span><span>WEB CONTROL · VERSÃO 0.1.1</span></footer>
   </main>;
 }
