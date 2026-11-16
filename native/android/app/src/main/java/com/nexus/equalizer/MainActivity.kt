@@ -27,10 +27,15 @@ import kotlin.math.min
 class MainActivity : Activity() {
     private val equalizer = SystemEqualizerController()
     private val bassEngine = SystemBassBoostController()
+    private val loudnessEngine = SystemLoudnessEnhancerController()
     private lateinit var bassStatusText: TextView
     private lateinit var bassSwitch: Switch
     private lateinit var bassStrength: SeekBar
     private lateinit var bassValue: TextView
+    private lateinit var loudnessStatusText: TextView
+    private lateinit var loudnessSwitch: Switch
+    private lateinit var loudnessStrength: SeekBar
+    private lateinit var loudnessValue: TextView
     private lateinit var updateStatusText: TextView
     private val preferences by lazy { getSharedPreferences("nexus-eq", MODE_PRIVATE) }
     private lateinit var statusText: TextView
@@ -73,7 +78,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (::statusText.isInitialized) { refreshEffect(); refreshBassEngine() }
+        if (::statusText.isInitialized) { refreshEffect(); refreshBassEngine(); if (selectedModule == 1) refreshLoudnessEngine() }
     }
 
 
@@ -475,7 +480,60 @@ class MainActivity : Activity() {
             override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
             override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
         })
+
+        val loudnessCard = card().apply { setPadding(dp(18), dp(18), dp(18), dp(16)) }
+        loudnessCard.addView(text("LOUDNESS", 13f, white, true))
+        loudnessStatusText = text("Verificando disponibilidade…", 12f, muted).apply { setPadding(0, dp(7), 0, dp(12)) }
+        loudnessCard.addView(loudnessStatusText)
+        val loudnessHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val loudnessLabels = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        loudnessLabels.addView(text("LEVEL BOOST", 12f, white, true))
+        loudnessLabels.addView(text("Compensação de nível de saída", 11f, muted).apply { setPadding(0, dp(4), 0, 0) })
+        loudnessHeader.addView(loudnessLabels, LinearLayout.LayoutParams(0, -2, 1f))
+        loudnessSwitch = Switch(this).apply { text = ""; thumbTintList = ColorStateList.valueOf(white); trackTintList = ColorStateList.valueOf(cyan) }
+        loudnessHeader.addView(loudnessSwitch)
+        loudnessCard.addView(loudnessHeader)
+        val loudnessLevelHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(18), 0, dp(5)) }
+        loudnessLevelHeader.addView(text("GANHO", 11f, muted, true), LinearLayout.LayoutParams(0, -2, 1f))
+        loudnessValue = text("+0.0 dB", 12f, cyan, true)
+        loudnessLevelHeader.addView(loudnessValue)
+        loudnessCard.addView(loudnessLevelHeader)
+        loudnessStrength = SeekBar(this).apply { max = 1000; progress = 0; progressTintList = ColorStateList.valueOf(cyan); thumbTintList = ColorStateList.valueOf(cyan); progressBackgroundTintList = ColorStateList.valueOf(0xFF34414D.toInt()) }
+        loudnessCard.addView(loudnessStrength)
+        loudnessCard.addView(text("Aumentar o ganho pode causar clipping. Comece com valores baixos.", 10f, muted).apply { setPadding(0, dp(8), 0, 0) })
+        page.addView(loudnessCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
+        loudnessSwitch.setOnCheckedChangeListener { _, enabled -> toggleLoudness(enabled) }
+        loudnessStrength.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                loudnessValue.text = String.format(Locale.getDefault(), "+%.1f dB", progress / 100f)
+                if (fromUser && !loudnessEngine.setTargetGain(progress)) loudnessStatusText.text = "O aparelho não aceitou o ajuste de ganho."
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+            override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+        })
         return page
+    }
+
+    private fun refreshLoudnessEngine() {
+        if (!::loudnessStatusText.isInitialized) return
+        val status = loudnessEngine.connect()
+        loudnessStatusText.text = status.message
+        loudnessSwitch.setOnCheckedChangeListener(null)
+        loudnessSwitch.isEnabled = status.available
+        loudnessSwitch.isChecked = status.available && status.enabled
+        loudnessStrength.isEnabled = status.available
+        loudnessStrength.progress = if (status.available) status.targetGain.coerceIn(0, 1000) else 0
+        loudnessValue.text = String.format(Locale.getDefault(), "+%.1f dB", loudnessStrength.progress / 100f)
+        loudnessSwitch.setOnCheckedChangeListener { _, enabled -> toggleLoudness(enabled) }
+    }
+
+    private fun toggleLoudness(enabled: Boolean) {
+        if (!loudnessEngine.setEnabled(enabled)) {
+            loudnessStatusText.text = "Não foi possível alterar o Level Boost."
+            loudnessSwitch.setOnCheckedChangeListener(null)
+            loudnessSwitch.isChecked = false
+            loudnessSwitch.setOnCheckedChangeListener { _, value -> toggleLoudness(value) }
+        }
     }
 
     private fun refreshBassEngine() {
