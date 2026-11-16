@@ -16,7 +16,6 @@ targets:
         excludes:
           - README.md
       - path: MediaDeviceRouting/AudioIO.swift
-      - path: MediaDeviceRouting/LowPass.swift
       - path: MediaDeviceRouting/LocalLink.m
     dependencies:
       - package: NexusEqualizerCore
