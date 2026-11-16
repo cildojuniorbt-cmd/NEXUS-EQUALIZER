@@ -22,13 +22,14 @@ jobs:
       - name: Generate Xcode project
         working-directory: native/ios
         run: xcodegen generate --spec project.yml
-      - name: Build iOS app and AUv3 extension
+      - name: Build iOS app and extensions for device SDK
         working-directory: native/ios
         run: |
           xcodebuild \
             -project NexusEqualizer.xcodeproj \
             -scheme NexusEqualizer \
-            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS' \
+            -sdk iphoneos \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             build
