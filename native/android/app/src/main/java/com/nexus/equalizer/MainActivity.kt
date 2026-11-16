@@ -107,6 +107,11 @@ class MainActivity : Activity() {
                 val gainMb = (EqPreset.gainAt(savedPreset, frequency.toDouble()) * 100.0).toInt()
                 equalizer.setBandLevel(index, gainMb)
             }
+        } else if (available && preferences.getString("preset", null) == "CUSTOM") {
+            for (index in 0 until status.bandCount) {
+                val savedLevel = preferences.getInt("band_level_$index", 0)
+                equalizer.setBandLevel(index, savedLevel)
+            }
         }
         enableSwitch.setOnCheckedChangeListener(null)
         enableSwitch.isEnabled = available
@@ -161,8 +166,12 @@ class MainActivity : Activity() {
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                         if (fromUser) {
-                            preferences.edit().putString("preset", "CUSTOM").apply()
-                            if (!equalizer.setBandLevel(index, progress + status.minLevelMb)) {
+                            val level = progress + status.minLevelMb
+                            preferences.edit()
+                                .putString("preset", "CUSTOM")
+                                .putInt("band_level_$index", level)
+                                .apply()
+                            if (!equalizer.setBandLevel(index, level)) {
                                 statusText.text = "Não foi possível alterar a banda. O controle pode ter sido transferido."
                             }
                         }
@@ -189,7 +198,13 @@ class MainActivity : Activity() {
             if (!equalizer.setBandLevel(index, gainMb)) allApplied = false
         }
         if (allApplied) {
-            preferences.edit().putString("preset", preset.name).apply()
+            val editor = preferences.edit().putString("preset", preset.name)
+            for (index in 0 until bandCount) {
+                val frequency = equalizer.centerFrequencyHz(index) ?: continue
+                val gainMb = (EqPreset.gainAt(preset, frequency.toDouble()) * 100.0).toInt()
+                editor.putInt("band_level_$index", gainMb)
+            }
+            editor.apply()
             statusText.text = "Preset ${preset.title} aplicado às bandas disponíveis do aparelho."
         } else {
             statusText.text = "Não foi possível aplicar todas as bandas. O controle pode ter sido perdido."
