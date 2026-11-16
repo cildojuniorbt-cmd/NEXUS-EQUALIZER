@@ -4,7 +4,7 @@ Native product workspace for Android and iOS. The existing Vite application rema
 
 ## Product truth
 - Android: a best-effort system output effect can be attempted through Android's legacy global audio session (session 0). Availability and routing are controlled by Android, the device manufacturer, and OS version. This is not guaranteed to affect every third-party app.
-- iOS: there is no public API for a third-party app to insert an EQ into all other apps' audio. The supported native path is an Audio Unit Extension (AUv3) hosted by compatible host apps, plus processing of audio inside NEXUS itself.
+- iOS: iOS 27 adds the Media Device Extension and real-time sample delivery path. With a Media Device Extension plus an Audio Server Plug-In, NEXUS can present a virtual output selected in Control Center and process eligible audio from other apps. This is distinct from AUv3, which remains a plugin for compatible hosts. See `ios/IOS27-SYSTEM-AUDIO-ROUTING.md`.
 - Never display "global active" unless the platform effect has been created, has control, and reports enabled.
 
 ## Workspace
