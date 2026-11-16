@@ -45,6 +45,12 @@ public final class RealtimeStereoEqualizer {
         return nexus_eq_realtime_set_output_gain(handle, linear)
     }
 
+    /// Processes planar float buffers in place without locks or allocations.
+    public func processPlanar(left: UnsafeMutablePointer<Float>, right: UnsafeMutablePointer<Float>?, frameCount: Int) {
+        guard frameCount > 0 else { return }
+        nexus_eq_realtime_render_planar(handle, left, right, frameCount)
+    }
+
     /// Processes interleaved stereo samples in place without locks or allocations.
     public func processInterleavedStereo(_ samples: inout [Float]) {
         samples.withUnsafeMutableBufferPointer { buffer in
