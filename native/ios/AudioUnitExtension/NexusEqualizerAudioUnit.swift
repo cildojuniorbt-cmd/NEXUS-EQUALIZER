@@ -80,6 +80,14 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
         }
     }
 
+    public override func allocateRenderResources() throws {
+        try super.allocateRenderResources()
+        // Rebuild the active coefficients using the host-negotiated sample rate.
+        for (address, parameter) in parametersByAddress {
+            applyParameter(address: address, value: parameter.value)
+        }
+    }
+
     private func buildParameterTree() {
         let bypass = AUParameterTree.createParameter(
             withIdentifier: "bypass", name: "Bypass", address: Address.bypass,
