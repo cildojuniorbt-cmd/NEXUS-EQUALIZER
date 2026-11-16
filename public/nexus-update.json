@@ -1,0 +1,12 @@
+{
+  "app": "NEXUS EQ",
+  "version": "0.1.0",
+  "channel": "stable",
+  "platform": "web",
+  "updateSystem": "service-worker",
+  "releaseNotes": [
+    "Estrutura inicial do NEXUS UPDATE SYSTEM",
+    "Detecção de novas versões e atualização com confirmação do usuário",
+    "Preservação dos ajustes locais do equalizador"
+  ]
+}
