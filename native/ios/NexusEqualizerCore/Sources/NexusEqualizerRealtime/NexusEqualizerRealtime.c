@@ -21,11 +21,25 @@ typedef struct {
     float x1, x2, y1, y2;
 } BiquadState;
 
+typedef struct {
+    NexusEQBiquadCoefficients target;
+    uint32_t remaining;
+    float delta_b0, delta_b1, delta_b2, delta_a1, delta_a2;
+} CoefficientRamp;
+
+typedef struct {
+    float target;
+    uint32_t remaining;
+    float delta;
+} GainRamp;
+
 struct NexusEQRealtime {
     Command queue[QUEUE_CAPACITY];
     _Atomic uint32_t head;
     _Atomic uint32_t tail;
     NexusEQBiquadCoefficients coefficients[NEXUS_EQ_BAND_COUNT];
+    CoefficientRamp coefficient_ramps[NEXUS_EQ_BAND_COUNT];
+    GainRamp output_gain_ramp;
     BiquadState left[NEXUS_EQ_BAND_COUNT];
     BiquadState right[NEXUS_EQ_BAND_COUNT];
     bool bypassed;
@@ -90,6 +104,24 @@ bool nexus_eq_realtime_render_set_coefficients(
         !isfinite(coefficients.b2) || !isfinite(coefficients.a1) ||
         !isfinite(coefficients.a2)) return false;
     eq->coefficients[band] = coefficients;
+    eq->coefficient_ramps[band].remaining = 0;
+    return true;
+}
+
+bool nexus_eq_realtime_render_ramp_coefficients(
+    NexusEQRealtime *eq, size_t band, NexusEQBiquadCoefficients target, uint32_t duration_frames) {
+    if (!eq || band >= NEXUS_EQ_BAND_COUNT || duration_frames == 0) return false;
+    if (!isfinite(target.b0) || !isfinite(target.b1) || !isfinite(target.b2) ||
+        !isfinite(target.a1) || !isfinite(target.a2)) return false;
+    CoefficientRamp *ramp = &eq->coefficient_ramps[band];
+    NexusEQBiquadCoefficients current = eq->coefficients[band];
+    ramp->target = target;
+    ramp->remaining = duration_frames;
+    ramp->delta_b0 = (target.b0 - current.b0) / (float)duration_frames;
+    ramp->delta_b1 = (target.b1 - current.b1) / (float)duration_frames;
+    ramp->delta_b2 = (target.b2 - current.b2) / (float)duration_frames;
+    ramp->delta_a1 = (target.a1 - current.a1) / (float)duration_frames;
+    ramp->delta_a2 = (target.a2 - current.a2) / (float)duration_frames;
     return true;
 }
 
@@ -102,7 +134,34 @@ bool nexus_eq_realtime_render_set_bypass(NexusEQRealtime *eq, bool bypassed) {
 bool nexus_eq_realtime_render_set_output_gain(NexusEQRealtime *eq, float linear_gain) {
     if (!eq || !isfinite(linear_gain) || linear_gain < 0.0f || linear_gain > 64.0f) return false;
     eq->output_gain = linear_gain;
+    eq->output_gain_ramp.remaining = 0;
     return true;
+}
+
+bool nexus_eq_realtime_render_ramp_output_gain(
+    NexusEQRealtime *eq, float target_linear_gain, uint32_t duration_frames) {
+    if (!eq || !isfinite(target_linear_gain) || target_linear_gain < 0.0f ||
+        target_linear_gain > 64.0f || duration_frames == 0) return false;
+    eq->output_gain_ramp.target = target_linear_gain;
+    eq->output_gain_ramp.remaining = duration_frames;
+    eq->output_gain_ramp.delta = (target_linear_gain - eq->output_gain) / (float)duration_frames;
+    return true;
+}
+
+static inline void advance_ramps(NexusEQRealtime *eq) {
+    for (size_t band = 0; band < NEXUS_EQ_BAND_COUNT; ++band) {
+        CoefficientRamp *r = &eq->coefficient_ramps[band];
+        if (r->remaining == 0) continue;
+        NexusEQBiquadCoefficients *c = &eq->coefficients[band];
+        c->b0 += r->delta_b0; c->b1 += r->delta_b1; c->b2 += r->delta_b2;
+        c->a1 += r->delta_a1; c->a2 += r->delta_a2;
+        if (--r->remaining == 0) *c = r->target;
+    }
+    GainRamp *gain = &eq->output_gain_ramp;
+    if (gain->remaining > 0) {
+        eq->output_gain += gain->delta;
+        if (--gain->remaining == 0) eq->output_gain = gain->target;
+    }
 }
 
 static inline float process_one(float input, const NexusEQBiquadCoefficients *c, BiquadState *s) {
@@ -144,6 +203,7 @@ void nexus_eq_realtime_render(NexusEQRealtime *eq, float *samples, size_t sample
 
     const size_t frames = sample_count / 2u;
     for (size_t frame = 0; frame < frames; ++frame) {
+        advance_ramps(eq);
         float left = samples[frame * 2u];
         float right = samples[frame * 2u + 1u];
         for (size_t band = 0; band < NEXUS_EQ_BAND_COUNT; ++band) {
@@ -170,6 +230,7 @@ void nexus_eq_realtime_render_planar(
         return;
     }
     for (size_t frame = 0; frame < frame_count; ++frame) {
+        advance_ramps(eq);
         float l = left[frame];
         float r = right ? right[frame] : 0.0f;
         for (size_t band = 0; band < NEXUS_EQ_BAND_COUNT; ++band) {
