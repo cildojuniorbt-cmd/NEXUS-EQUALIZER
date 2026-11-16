@@ -1,34 +1,31 @@
 # NEXUS EQUALIZER
 
-**Produto pretendido: equalizar o áudio que já está tocando no celular, sem importar músicas e sem exigir um player interno.** Consulte [PRODUCT-REQUIREMENTS.md](PRODUCT-REQUIREMENTS.md) para os requisitos e as limitações reais de cada plataforma.
+**NEXUS EQUALIZER é um equalizador, não um reprodutor de áudio.** Não possui player, playlists, biblioteca musical nem importação de arquivos.
 
-NEXUS EQUALIZER is being developed as a native audio-equalizer product for Android and iOS. The original Vite/Web Audio app is retained as a browser prototype and DSP/UI reference; it is **not** a system-wide equalizer.
+## Versão Web
 
-## Native development
+A versão Web é, neste estágio, uma interface de controle e prototipagem: permite ajustar 10 bandas, visualizar a curva, ativar/bypassar os ajustes, selecionar perfis e salvar configurações localmente no navegador.
 
-See [native/README.md](native/README.md) for the native workspace, architecture, build instructions, and release gates.
+**Limitação importante:** navegadores móveis não permitem que uma página web intercepte e equalize o áudio de outros aplicativos, como Spotify, YouTube, Instagram ou jogos. Esta interface Web não altera o áudio do sistema. A equalização real do áudio de outros aplicativos depende das integrações nativas de cada plataforma.
 
-- Android: Kotlin app with a best-effort legacy output-mix equalizer controller. Global output routing is device/OEM/OS dependent and must be verified on real hardware.
-- iOS: system-audio routing is being developed using the iOS 27 Media Device Extension + Audio Server Plug-In route; AUv3 remains a separate plugin path for compatible hosts. See `native/ios/IOS27-SYSTEM-AUDIO-ROUTING.md`.
-- Platform contract and QA matrix: [native/docs/PLATFORM-CAPABILITIES.md](native/docs/PLATFORM-CAPABILITIES.md).
+## Aplicativos nativos
 
-## Web prototype
+- **Android:** controlador de equalização do áudio de saída, sujeito às APIs, ao fabricante e à validação em aparelhos reais.
+- **iOS:** desenvolvimento da rota de áudio do sistema com iOS 27 Media Device Extension + Audio Server Plug-In. AUv3 é uma rota separada para aplicativos compatíveis.
 
-The repository root contains the original Vite + React + Web Audio prototype. It can process audio routed through the page itself, but cannot intercept Spotify, Apple Music, YouTube, games, or other independent apps.
+Consulte [PRODUCT-REQUIREMENTS.md](PRODUCT-REQUIREMENTS.md), [native/README.md](native/README.md) e [native/ios/IOS27-SYSTEM-AUDIO-ROUTING.md](native/ios/IOS27-SYSTEM-AUDIO-ROUTING.md).
 
-Run locally:
+## Executar a interface Web
 
 ```sh
 npm install
 npm run dev
 ```
 
-## Build checks
+## Verificações
 
-- Web prototype: `npm run build`
-- Android native debug build: see [Android native workflow](.github/workflows/native-android.yml)
-- Portable iOS DSP unit tests: see [iOS DSP workflow](.github/workflows/ios-core.yml)
+```sh
+npm run build
+```
 
-## Product status
-
-Native foundations are in place, not a release-ready app yet. Android global audio behavior still requires real-device validation. The iOS 27 Media Device routing scaffold and DSP bridge are now in the project, but Xcode 27 compilation, entitlement provisioning/signing, physical-device routing tests, and source-app compatibility validation remain before release.
+A interface Web não deve ser apresentada como equalizador global. A compatibilidade e o processamento do áudio do sistema devem ser validados separadamente nos aplicativos nativos e em dispositivos físicos.
