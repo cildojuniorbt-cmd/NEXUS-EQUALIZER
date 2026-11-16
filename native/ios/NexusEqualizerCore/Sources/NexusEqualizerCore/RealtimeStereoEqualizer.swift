@@ -13,7 +13,12 @@ public final class RealtimeStereoEqualizer {
         handle = created
         for (index, frequency) in Self.bandFrequencies.enumerated() {
             let filter = BiquadEQ(frequency: frequency)
-            guard enqueue(filter.coefficients(), band: index) else { return nil }
+            let coefficients = filter.coefficients()
+            guard enqueue(coefficients, band: index) else {
+                // Swift does not call deinit when a failable initializer exits early.
+                nexus_eq_realtime_destroy(created)
+                return nil
+            }
         }
     }
 
@@ -62,6 +67,9 @@ public final class RealtimeStereoEqualizer {
     }
 
     private func enqueue(_ coefficients: BiquadCoefficients, band: Int) -> Bool {
+        guard coefficients.b0.isFinite, coefficients.b1.isFinite,
+              coefficients.b2.isFinite, coefficients.a1.isFinite,
+              coefficients.a2.isFinite else { return false }
         let c = NexusEQBiquadCoefficients(
             b0: Float(coefficients.b0), b1: Float(coefficients.b1),
             b2: Float(coefficients.b2), a1: Float(coefficients.a1),
