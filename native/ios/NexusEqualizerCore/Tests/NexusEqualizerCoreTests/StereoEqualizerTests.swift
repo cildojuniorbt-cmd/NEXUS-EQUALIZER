@@ -67,4 +67,30 @@ final class StereoEqualizerTests: XCTestCase {
         XCTAssertTrue(samples.allSatisfy { $0.isFinite })
     }
 
+
+    func testRealtimeEngineProcessesStereoWithoutChangingChannelRouting() throws {
+        let engine = try XCTUnwrap(RealtimeStereoEqualizer())
+        var samples: [Float] = [0.25, -0.25, 0.5, -0.5]
+        engine.processInterleavedStereo(&samples)
+        XCTAssertEqual(samples[0], 0.25, accuracy: 0.0001)
+        XCTAssertEqual(samples[1], -0.25, accuracy: 0.0001)
+        XCTAssertEqual(samples[2], 0.5, accuracy: 0.0001)
+        XCTAssertEqual(samples[3], -0.5, accuracy: 0.0001)
+    }
+
+    func testRealtimeEngineBypassAndOutputGain() throws {
+        let engine = try XCTUnwrap(RealtimeStereoEqualizer())
+        XCTAssertTrue(engine.setOutputGainDB(6))
+        XCTAssertTrue(engine.setBypassed(true))
+        var samples: [Float] = [0.1, -0.1]
+        engine.processInterleavedStereo(&samples)
+        XCTAssertGreaterThan(samples[0], 0.1)
+        XCTAssertLessThan(samples[1], -0.1)
+    }
+
+    func testRealtimeEngineRejectsInvalidBand() throws {
+        let engine = try XCTUnwrap(RealtimeStereoEqualizer())
+        XCTAssertFalse(engine.setBand(index: 10, gainDB: 3))
+    }
+
 }
