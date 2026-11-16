@@ -15,3 +15,7 @@
 .timeline{display:flex;align-items:center;gap:10px;margin-top:12px;color:#858b93;font:10px 'DM Mono',monospace}
 .timeline input{flex:1;min-width:0;accent-color:#343a42}
 .timeline input:disabled{opacity:.35}
+
+.filter-control span{display:flex;align-items:center;gap:8px;color:#343a42;font-weight:700}
+.filter-control span input{accent-color:#343a42;width:15px;height:15px}
+.filter-control small{font:10px Manrope,sans-serif;color:#8b9199}
