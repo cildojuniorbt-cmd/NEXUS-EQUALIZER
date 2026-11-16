@@ -143,7 +143,7 @@ final class NexusEqualizerMediaDeviceExtension: MediaDeviceExtension, RealtimeSa
     }()
 
     required init() {
-        log.notice("NEXUS EQUALIZERExtension init")
+        log.notice("NexusEqualizerMediaDeviceExtension init")
     }
 
     func startDeviceDiscovery() {
