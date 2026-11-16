@@ -181,9 +181,14 @@ static void consume_commands(NexusEQRealtime *eq) {
             case COMMAND_COEFFICIENTS:
                 if (command.band < NEXUS_EQ_BAND_COUNT)
                     eq->coefficients[command.band] = command.value.coefficients;
+                if (command.band < NEXUS_EQ_BAND_COUNT)
+                    eq->coefficient_ramps[command.band].remaining = 0;
                 break;
             case COMMAND_BYPASS: eq->bypassed = command.value.bypassed != 0; break;
-            case COMMAND_OUTPUT_GAIN: eq->output_gain = command.value.output_gain; break;
+            case COMMAND_OUTPUT_GAIN:
+                eq->output_gain = command.value.output_gain;
+                eq->output_gain_ramp.remaining = 0;
+                break;
         }
         tail = (tail + 1u) % QUEUE_CAPACITY;
     }
