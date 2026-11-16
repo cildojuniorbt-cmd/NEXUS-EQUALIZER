@@ -31,6 +31,10 @@ class MainActivity : Activity() {
     private lateinit var presetsContainer: LinearLayout
     private lateinit var enableSwitch: Switch
     private lateinit var curveView: EqCurveView
+    private lateinit var pageContainer: LinearLayout
+    private lateinit var eqPage: LinearLayout
+    private val navigationItems = mutableListOf<TextView>()
+    private var selectedModule = 0
     private val bandSliders = mutableListOf<SeekBar>()
     private val bandValues = mutableListOf<TextView>()
     private val presetChips = mutableListOf<TextView>()
@@ -116,8 +120,30 @@ class MainActivity : Activity() {
         brandRow.addView(text("ANDROID  /  AUDIO", 10f, muted, true))
         root.addView(brandRow)
         root.addView(text("Seu som. Seu ajuste.", 14f, muted).apply {
-            setPadding(0, dp(7), 0, dp(20))
+            setPadding(0, dp(7), 0, dp(18))
         })
+
+        val navigation = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(4), 0, dp(16))
+        }
+        val moduleNames = listOf("EQ", "DSP", "ROOM", "HEAD", "ANALYZE")
+        moduleNames.forEachIndexed { index, label ->
+            val item = text(label, 10f, if (index == 0) bg else muted, true).apply {
+                gravity = Gravity.CENTER
+                setPadding(dp(12), dp(12), dp(12), dp(12))
+                background = rounded(if (index == 0) cyan else panelRaised, 12)
+                setOnClickListener { showModule(index) }
+            }
+            navigationItems.add(item)
+            navigation.addView(item, LinearLayout.LayoutParams(0, dp(42), 1f).apply {
+                marginEnd = if (index == moduleNames.lastIndex) 0 else dp(5)
+            })
+        }
+        root.addView(navigation)
+        pageContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        eqPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
 
         val statusCard = card().apply {
             orientation = LinearLayout.HORIZONTAL
@@ -130,7 +156,7 @@ class MainActivity : Activity() {
         statusCard.addView(statusDot, LinearLayout.LayoutParams(dp(8), dp(8)).apply { marginEnd = dp(12) })
         statusText = text("Verificando áudio do aparelho…", 12f, muted)
         statusCard.addView(statusText, LinearLayout.LayoutParams(0, -2, 1f))
-        root.addView(statusCard)
+        eqPage.addView(statusCard)
 
         val powerRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -148,7 +174,7 @@ class MainActivity : Activity() {
             trackTintList = ColorStateList.valueOf(cyan)
         }
         powerRow.addView(enableSwitch)
-        root.addView(powerRow)
+        eqPage.addView(powerRow)
 
         val eqCard = card()
         val eqHeader = LinearLayout(this).apply {
@@ -162,16 +188,16 @@ class MainActivity : Activity() {
             setPadding(0, dp(8), 0, dp(4))
         }
         eqCard.addView(curveView, LinearLayout.LayoutParams(-1, dp(112)))
-        root.addView(eqCard)
+        eqPage.addView(eqCard)
 
-        root.addView(text("PRESETS", 11f, muted, true).apply {
+        eqPage.addView(text("PRESETS", 11f, muted, true).apply {
             setPadding(dp(2), dp(23), 0, dp(11))
         })
         presetsContainer = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        root.addView(HorizontalScrollView(this).apply {
+        eqPage.addView(HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
             clipToPadding = false
             addView(presetsContainer)
@@ -187,14 +213,62 @@ class MainActivity : Activity() {
         bandsCard.addView(bandsHeader)
         bandsContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         bandsCard.addView(bandsContainer)
-        root.addView(bandsCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
+        eqPage.addView(bandsCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
 
-        root.addView(text("NEXUS  •  SOUND YOUR WAY", 10f, 0xFF526273.toInt(), true).apply {
+        eqPage.addView(text("NEXUS  •  SOUND YOUR WAY", 10f, 0xFF526273.toInt(), true).apply {
             gravity = Gravity.CENTER
             setPadding(0, dp(24), 0, dp(4))
         })
+        pageContainer.addView(eqPage)
+        root.addView(pageContainer)
         setContentView(scroll)
         refreshEffect()
+    }
+
+
+    private fun showModule(index: Int) {
+        selectedModule = index
+        navigationItems.forEachIndexed { itemIndex, item ->
+            val active = itemIndex == index
+            item.background = rounded(if (active) cyan else panelRaised, 12)
+            item.setTextColor(if (active) bg else muted)
+        }
+        pageContainer.removeAllViews()
+        if (index == 0) {
+            pageContainer.addView(eqPage)
+            return
+        }
+        val titles = listOf("", "DSP STUDIO", "ROOM STUDIO", "HEADPHONE STUDIO", "AUDIO ANALYZER")
+        val subtitles = listOf("", "Processamento e efeitos", "Ambientes e correção acústica", "Perfis e calibração de fones", "Medição e monitoramento")
+        val descriptions = listOf(
+            emptyList(),
+            listOf("BASS ENGINE" to "Graves, punch e impacto", "EXCITER" to "Brilho e presença", "STEREO ENHANCER" to "Largura estéreo", "CROSSFEED" to "Escuta em fones", "DYNAMICS" to "Compressor, limiter e de-esser", "DSP CHAIN" to "Ordem dos processadores"),
+            listOf("ROOM PROFILE" to "Perfis para diferentes ambientes", "SPEAKER SETUP" to "Configuração e posicionamento", "ACOUSTIC CORRECTION" to "Correção baseada em medições reais", "DISTANCE" to "Distância e parâmetros das caixas"),
+            listOf("HEADPHONE PROFILES" to "Perfis por modelo de fone", "FREQUENCY COMPENSATION" to "Compensação de frequência", "DEVICE PROFILES" to "Ajustes por dispositivo", "SPATIAL AUDIO" to "Palco e espacialidade, quando suportados"),
+            listOf("FFT SPECTRUM" to "Analisador de frequência em tempo real", "PEAK / RMS" to "Medidores de nível", "CLIPPING" to "Indicador de saturação", "SIGNAL MONITOR" to "Monitoramento de entrada e saída")
+        )
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(8), 0, dp(24))
+        }
+        page.addView(text("NEXUS / MODULE 0$index", 10f, cyan, true))
+        page.addView(text(titles[index], 24f, white, true).apply { setPadding(0, dp(6), 0, dp(5)) })
+        page.addView(text(subtitles[index], 13f, muted).apply { setPadding(0, 0, 0, dp(18)) })
+        val notice = card().apply {
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            addView(text("MÓDULO EM DESENVOLVIMENTO", 11f, cyan, true))
+            addView(text("A estrutura está sendo preparada. Os controles serão habilitados somente quando o processamento real estiver integrado e validado neste aparelho.", 12f, muted).apply { setPadding(0, dp(7), 0, 0) })
+        }
+        page.addView(notice, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(18) })
+        descriptions[index].forEach { (title, detail) ->
+            val item = card().apply {
+                setPadding(dp(16), dp(15), dp(16), dp(15))
+                addView(text(title, 13f, white, true))
+                addView(text(detail, 11f, muted).apply { setPadding(0, dp(5), 0, 0) })
+            }
+            page.addView(item, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
+        }
+        pageContainer.addView(page)
     }
 
     private fun refreshEffect() {
