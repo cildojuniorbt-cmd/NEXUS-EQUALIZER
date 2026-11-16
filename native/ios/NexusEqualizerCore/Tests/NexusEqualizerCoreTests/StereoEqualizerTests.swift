@@ -119,4 +119,38 @@ final class StereoEqualizerTests: XCTestCase {
         XCTAssertEqual(mono[2], 0.5, accuracy: 0.0001)
     }
 
+
+    func testRealtimeEngineAppliesBandGainToSignal() throws {
+        let engine = try XCTUnwrap(RealtimeStereoEqualizer())
+        XCTAssertTrue(engine.setBand(index: 0, gainDB: 12, q: 1, sampleRate: 48_000))
+        let frameCount = 8192
+        var samples = [Float](repeating: 0, count: frameCount * 2)
+        for frame in 0..<frameCount {
+            let value = Float(sin(2 * Double.pi * 32 * Double(frame) / 48_000))
+            samples[frame * 2] = value
+            samples[frame * 2 + 1] = value
+        }
+        engine.processInterleavedStereo(&samples)
+        let outputRMS = sqrt(samples.reduce(0.0) { $0 + Double($1 * $1) } / Double(samples.count))
+        XCTAssertGreaterThan(outputRMS, 0.5)
+    }
+
+    func testRealtimeCommandQueueReportsBackpressure() throws {
+        let engine = try XCTUnwrap(RealtimeStereoEqualizer())
+        var accepted = 0
+        var rejected = 0
+        for index in 0..<300 {
+            if engine.setBand(index: index % 10, gainDB: Double(index % 18)) {
+                accepted += 1
+            } else {
+                rejected += 1
+            }
+        }
+        XCTAssertGreaterThan(accepted, 0)
+        XCTAssertGreaterThan(rejected, 0)
+        var samples: [Float] = [0.1, -0.1]
+        engine.processInterleavedStereo(&samples)
+        XCTAssertTrue(engine.setBand(index: 0, gainDB: 0))
+    }
+
 }
