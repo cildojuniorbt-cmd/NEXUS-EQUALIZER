@@ -11,8 +11,8 @@ android {
         applicationId = "com.nexus.equalizer"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = System.getenv("APP_VERSION_CODE")?.toIntOrNull() ?: 2
+        versionName = System.getenv("APP_VERSION_NAME") ?: "0.2.0"
     }
 
     signingConfigs {
