@@ -93,4 +93,30 @@ final class StereoEqualizerTests: XCTestCase {
         XCTAssertFalse(engine.setBand(index: 10, gainDB: 3))
     }
 
+
+    func testRealtimePlanarRenderKeepsStereoChannelsIndependent() throws {
+        let engine = try XCTUnwrap(RealtimeStereoEqualizer())
+        var left: [Float] = [0.2, 0.4, -0.2]
+        var right: [Float] = [-0.1, -0.3, 0.1]
+        left.withUnsafeMutableBufferPointer { l in
+            right.withUnsafeMutableBufferPointer { r in
+                engine.processPlanar(left: l.baseAddress!, right: r.baseAddress!, frameCount: l.count)
+            }
+        }
+        XCTAssertEqual(left[0], 0.2, accuracy: 0.0001)
+        XCTAssertEqual(left[1], 0.4, accuracy: 0.0001)
+        XCTAssertEqual(right[0], -0.1, accuracy: 0.0001)
+        XCTAssertEqual(right[1], -0.3, accuracy: 0.0001)
+    }
+
+    func testRealtimePlanarMonoRender() throws {
+        let engine = try XCTUnwrap(RealtimeStereoEqualizer())
+        var mono: [Float] = [0.25, -0.25, 0.5]
+        mono.withUnsafeMutableBufferPointer { buffer in
+            engine.processPlanar(left: buffer.baseAddress!, right: nil, frameCount: buffer.count)
+        }
+        XCTAssertEqual(mono[0], 0.25, accuracy: 0.0001)
+        XCTAssertEqual(mono[2], 0.5, accuracy: 0.0001)
+    }
+
 }
