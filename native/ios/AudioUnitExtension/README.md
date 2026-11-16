@@ -21,7 +21,7 @@
 
 The C engine uses a bounded SPSC command queue. Parameter writes must be serialized on one control producer; the AU render callback is the single consumer. Queue-full writes return false. The audio render path performs no locks, heap allocations, or system calls. Create and destroy the engine only outside the render callback.
 
-The AU target is an initial implementation, not a release-certified plug-in. Validate the exact Audio Unit metadata, host lifecycle, supported channel layouts, sample-rate negotiation, parameter automation, factory and user preset restoration, maximum render sizes, interruption/reinitialization, and long-duration glitch behavior on Apple hardware. The current target has not been compiled by Xcode in this environment.
+The AU target is an initial implementation, not a release-certified plug-in. Validate the exact Audio Unit metadata, host lifecycle, supported channel layouts, sample-rate negotiation, parameter changes and sample-accurate automation events, factory and user preset restoration, maximum render sizes, interruption/reinitialization, and long-duration glitch behavior on Apple hardware. The current render block applies parameter changes received through the parameter observer; it does not yet consume timestamped events from the host's realtime event list, so sample-accurate automation is not complete. The current target has not been compiled by Xcode in this environment.
 
 AUv3 works only inside compatible host apps. It does not process arbitrary Spotify, YouTube, or system audio. iOS does not provide a public API for universal third-party system-output equalization.
 
