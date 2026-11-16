@@ -19,3 +19,5 @@
 .filter-control span{display:flex;align-items:center;gap:8px;color:#343a42;font-weight:700}
 .filter-control span input{accent-color:#343a42;width:15px;height:15px}
 .filter-control small{font:10px Manrope,sans-serif;color:#8b9199}
+
+.param-band select{width:100%;min-width:0;border:1px solid #e1e3e6;border-radius:7px;padding:8px;background:#f8f9fa;color:#343a42;font:10px Manrope,sans-serif}
