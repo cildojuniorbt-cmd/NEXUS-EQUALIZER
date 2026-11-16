@@ -30,7 +30,7 @@ let log = Logger(subsystem: "com.nexusworks.equalizer", category: "extension")
 
 @main
 @available(iOS 27.0, *)
-final class NEXUS EQUALIZERExtension: MediaDeviceExtension, RealtimeSampleHandling {
+final class NexusEqualizerMediaDeviceExtension: MediaDeviceExtension, RealtimeSampleHandling {
 
     // MARK: - MediaDeviceExtension
 
