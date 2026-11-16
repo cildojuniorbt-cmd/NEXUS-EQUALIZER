@@ -54,7 +54,7 @@ export default function App() {
       filter.type = 'peaking';
       filter.frequency.value = frequency;
       filter.Q.value = 1.15;
-      filter.gain.value = enabled ? (values[index] || 0) : 0;
+      filter.gain.value = enabled && tab === 'graphic' ? (values[index] || 0) : 0;
       return filter;
     });
     const paramFilters = paramFrequencies.map((frequency, index) => {
@@ -62,7 +62,7 @@ export default function App() {
       filter.type = 'peaking';
       filter.frequency.value = frequency;
       filter.Q.value = paramQs[index];
-      filter.gain.value = enabled ? (paramValues[index] || 0) : 0;
+      filter.gain.value = enabled && tab === 'parametric' ? (paramValues[index] || 0) : 0;
       return filter;
     });
     const compressor = ctx.createDynamicsCompressor();
@@ -142,15 +142,15 @@ export default function App() {
 
   useEffect(() => {
     filtersRef.current.forEach((filter, index) => {
-      filter.gain.setTargetAtTime(enabled ? values[index] : 0, contextRef.current?.currentTime ?? 0, 0.015);
+      filter.gain.setTargetAtTime(enabled && tab === 'graphic' ? values[index] : 0, contextRef.current?.currentTime ?? 0, 0.015);
     });
-  }, [values, enabled]);
+  }, [values, enabled, tab]);
 
   useEffect(() => {
     paramFiltersRef.current.forEach((filter, index) => {
-      filter.gain.setTargetAtTime(enabled ? paramValues[index] : 0, contextRef.current?.currentTime ?? 0, 0.015);
+      filter.gain.setTargetAtTime(enabled && tab === 'parametric' ? paramValues[index] : 0, contextRef.current?.currentTime ?? 0, 0.015);
     });
-  }, [paramValues, enabled]);
+  }, [paramValues, enabled, tab]);
 
   useEffect(() => {
     paramFiltersRef.current.forEach((filter, index) => {
