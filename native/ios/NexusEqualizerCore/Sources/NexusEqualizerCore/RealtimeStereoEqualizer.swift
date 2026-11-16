@@ -132,6 +132,23 @@ public final class RealtimeStereoEqualizer {
         return nexus_eq_realtime_render_set_coefficients(handle, band, c)
     }
 
+
+    /// Drains serialized control-thread updates once at the start of an AU render block.
+    public func beginRenderBlock() {
+        nexus_eq_realtime_render_begin_block(handle)
+    }
+
+    /// Processes an AU render segment without draining the control queue again.
+    /// Use only after beginRenderBlock, on the same render thread.
+    public func processPlanarSegment(
+        left: UnsafeMutablePointer<Float>,
+        right: UnsafeMutablePointer<Float>?,
+        frameCount: Int
+    ) {
+        guard frameCount > 0 else { return }
+        nexus_eq_realtime_render_planar_segment(handle, left, right, frameCount)
+    }
+
     /// Processes planar float buffers in place without locks or allocations.
     public func processPlanar(left: UnsafeMutablePointer<Float>, right: UnsafeMutablePointer<Float>?, frameCount: Int) {
         guard frameCount > 0 else { return }
