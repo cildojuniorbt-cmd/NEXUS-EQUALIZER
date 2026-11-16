@@ -18,6 +18,7 @@ class MainActivity : Activity() {
     private lateinit var bandsContainer: LinearLayout
     private lateinit var presetsContainer: LinearLayout
     private lateinit var enableSwitch: Switch
+    private val bandSliders = mutableListOf<SeekBar>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,6 +99,7 @@ class MainActivity : Activity() {
         statusText.text = status.message
         bandsContainer.removeAllViews()
         presetsContainer.removeAllViews()
+        bandSliders.clear()
         val available = status.state == SystemEqualizerController.State.AVAILABLE_AND_CONTROLLED
         val savedPreset = preferences.getString("preset", null)
             ?.let { name -> EqPreset.values().firstOrNull { it.name == name } }
