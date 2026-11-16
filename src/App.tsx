@@ -30,6 +30,7 @@ export default function App() {
   const [paramValues, setParamValues] = useState<number[]>(PARAM_FREQS.map(() => 0));
   const [paramFrequencies, setParamFrequencies] = useState<number[]>(PARAM_FREQS);
   const [paramQs, setParamQs] = useState<number[]>(PARAM_FREQS.map(() => 1));
+  const [paramTypes, setParamTypes] = useState<BiquadFilterType[]>(PARAM_FREQS.map(() => 'peaking'));
   const objectUrlRef = useRef<string | null>(null);
   const [output, setOutput] = useState(0);
   const [compressorEnabled, setCompressorEnabled] = useState(false);
@@ -73,7 +74,7 @@ export default function App() {
     });
     const paramFilters = paramFrequencies.map((frequency, index) => {
       const filter = ctx.createBiquadFilter();
-      filter.type = 'peaking';
+      filter.type = paramTypes[index];
       filter.frequency.value = frequency;
       filter.Q.value = paramQs[index];
       filter.gain.value = enabled && tab === 'parametric' ? (paramValues[index] || 0) : 0;
@@ -134,6 +135,7 @@ export default function App() {
         if (Array.isArray(data.paramValues) && data.paramValues.length === PARAM_FREQS.length) setParamValues(data.paramValues as number[]);
         if (Array.isArray(data.paramFrequencies) && data.paramFrequencies.length === PARAM_FREQS.length) setParamFrequencies(data.paramFrequencies as number[]);
         if (Array.isArray(data.paramQs) && data.paramQs.length === PARAM_FREQS.length) setParamQs(data.paramQs as number[]);
+        if (Array.isArray(data.paramTypes) && data.paramTypes.length === PARAM_FREQS.length) setParamTypes(data.paramTypes as BiquadFilterType[]);
         if (typeof data.output === 'number') setOutput(data.output);
         if (typeof data.highPassEnabled === 'boolean') setHighPassEnabled(data.highPassEnabled);
         if (typeof data.lowPassEnabled === 'boolean') setLowPassEnabled(data.lowPassEnabled);
@@ -155,12 +157,12 @@ export default function App() {
     if (!settingsLoaded) return;
     try {
       localStorage.setItem('nexus-equalizer-settings-v1', JSON.stringify({
-        values, paramValues, paramFrequencies, paramQs, output, threshold, ratio, enabled, compressorEnabled, highPassEnabled, lowPassEnabled, highPassFrequency, lowPassFrequency, preset
+        values, paramValues, paramFrequencies, paramQs, paramTypes, output, threshold, ratio, enabled, compressorEnabled, highPassEnabled, lowPassEnabled, highPassFrequency, lowPassFrequency, preset
       }));
     } catch {
       // Audio processing remains available when storage is unavailable.
     }
-  }, [settingsLoaded, values, paramValues, paramFrequencies, paramQs, output, threshold, ratio, enabled, compressorEnabled, highPassEnabled, lowPassEnabled, highPassFrequency, lowPassFrequency, preset]);
+  }, [settingsLoaded, values, paramValues, paramFrequencies, paramQs, paramTypes, output, threshold, ratio, enabled, compressorEnabled, highPassEnabled, lowPassEnabled, highPassFrequency, lowPassFrequency, preset]);
 
   useEffect(() => {
     filtersRef.current.forEach((filter, index) => {
@@ -187,9 +189,10 @@ export default function App() {
 
   useEffect(() => {
     paramFiltersRef.current.forEach((filter, index) => {
+      filter.type = paramTypes[index];
       filter.frequency.setTargetAtTime(paramFrequencies[index], contextRef.current?.currentTime ?? 0, 0.02);
     });
-  }, [paramFrequencies]);
+  }, [paramFrequencies, paramTypes]);
 
   useEffect(() => {
     paramFiltersRef.current.forEach((filter, index) => {
@@ -317,6 +320,10 @@ export default function App() {
     setParamQs(current => current.map((v, i) => i === index ? value : v));
   }
 
+  function updateParamType(index: number, value: BiquadFilterType) {
+    setParamTypes(current => current.map((v, i) => i === index ? value : v));
+  }
+
   function formatTime(seconds: number) {
     if (!Number.isFinite(seconds)) return '0:00';
     const minutes = Math.floor(seconds / 60);
@@ -351,7 +358,7 @@ export default function App() {
       <section className="eq-card">
         <div className="section-heading"><div><p className="section-kicker">PROCESSAMENTO</p><h2>Equalizador</h2></div><button className={'power-button ' + (enabled ? 'on' : '')} onClick={() => setEnabled(v => !v)}><Power size={16}/> {enabled ? 'ON' : 'BYPASS'}</button></div>
         <div className="tabs"><button className={tab === 'graphic' ? 'selected' : ''} onClick={() => setTab('graphic')}>Gráfico de 31 bandas</button><button className={tab === 'parametric' ? 'selected' : ''} onClick={() => setTab('parametric')}>Paramétrico de 10 bandas</button></div>
-        {tab === 'graphic' ? <div className="graphic-eq">{FREQUENCIES.map((frequency, index) => <div className="band" key={frequency}><span className="band-value">{values[index] > 0 ? '+' : ''}{values[index].toFixed(0)}</span><input aria-label={frequency + ' Hz gain'} type="range" min="-12" max="12" step=".5" value={values[index]} onChange={e => updateBand(index, Number(e.target.value))}/><span className="band-frequency">{frequency >= 1000 ? (frequency / 1000).toString().replace('.0','') + 'k' : frequency}</span></div>)}</div> : <div className="parametric-grid">{paramFrequencies.map((frequency, index) => <div className="param-band" key={index}><strong>BAND {index + 1} · {frequency >= 1000 ? (frequency / 1000).toFixed(2).replace(/0+$/,'') + ' kHz' : Math.round(frequency) + ' Hz'}</strong><label>GANHO <b>{paramValues[index] > 0 ? '+' : ''}{paramValues[index].toFixed(1)} dB</b><input type="range" min="-12" max="12" step=".5" value={paramValues[index]} onChange={e => updateParam(index, Number(e.target.value))}/></label><label>FREQUÊNCIA <b>{Math.round(frequency)} Hz</b><input type="range" min="20" max="20000" step="1" value={frequency} onChange={e => updateParamFrequency(index, Number(e.target.value))}/></label><label>Q / LARGURA <b>{paramQs[index].toFixed(2)}</b><input type="range" min="0.3" max="8" step=".05" value={paramQs[index]} onChange={e => updateParamQ(index, Number(e.target.value))}/></label><small>FILTRO PEAKING</small></div>)}</div>}
+        {tab === 'graphic' ? <div className="graphic-eq">{FREQUENCIES.map((frequency, index) => <div className="band" key={frequency}><span className="band-value">{values[index] > 0 ? '+' : ''}{values[index].toFixed(0)}</span><input aria-label={frequency + ' Hz gain'} type="range" min="-12" max="12" step=".5" value={values[index]} onChange={e => updateBand(index, Number(e.target.value))}/><span className="band-frequency">{frequency >= 1000 ? (frequency / 1000).toString().replace('.0','') + 'k' : frequency}</span></div>)}</div> : <div className="parametric-grid">{paramFrequencies.map((frequency, index) => <div className="param-band" key={index}><strong>BAND {index + 1} · {frequency >= 1000 ? (frequency / 1000).toFixed(2).replace(/0+$/,'') + ' kHz' : Math.round(frequency) + ' Hz'}</strong><label>GANHO <b>{paramValues[index] > 0 ? '+' : ''}{paramValues[index].toFixed(1)} dB</b><input type="range" min="-12" max="12" step=".5" value={paramValues[index]} onChange={e => updateParam(index, Number(e.target.value))}/></label><label>FREQUÊNCIA <b>{Math.round(frequency)} Hz</b><input type="range" min="20" max="20000" step="1" value={frequency} onChange={e => updateParamFrequency(index, Number(e.target.value))}/></label><label>Q / LARGURA <b>{paramQs[index].toFixed(2)}</b><input type="range" min="0.3" max="8" step=".05" value={paramQs[index]} onChange={e => updateParamQ(index, Number(e.target.value))}/></label><select aria-label={'Tipo do filtro da banda ' + (index + 1)} value={paramTypes[index]} onChange={e => updateParamType(index, e.target.value as BiquadFilterType)}><option value="peaking">Bell / Peaking</option><option value="lowshelf">Low Shelf</option><option value="highshelf">High Shelf</option><option value="notch">Notch</option><option value="bandpass">Band-pass</option></select></div>)}</div>}
         <div className="eq-footer"><label>PRÉ-AMPLIFICAÇÃO / SAÍDA <strong>{output > 0 ? '+' : ''}{output.toFixed(1)} dB</strong></label><input type="range" min="-12" max="6" step=".5" value={output} onChange={e => setOutput(Number(e.target.value))}/><button className="reset-button" onClick={() => { applyPreset('Flat'); setOutput(0); }}><RotateCcw size={14}/> Redefinir EQ</button></div>
       </section>
 
