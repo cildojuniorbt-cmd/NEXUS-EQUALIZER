@@ -232,10 +232,6 @@ final class AudioIO: ObservableObject {
         // .mixWithOthers では先に鳴っているアプリがハードウェアのレートを
         // 決めることがあるため、ここで sr に合わせて PCM を誤解釈しない。
 
-        guard let equalizer else {
-            status = "NEXUS DSP could not be initialized"
-            return
-        }
         for (index, gain) in bandGainsDB.enumerated() {
             _ = equalizer.setBand(index: index, gainDB: gain, sampleRate: 48000)
         }
@@ -337,11 +333,11 @@ final class AudioIO: ObservableObject {
     }
 
     func setOutputGain(gainDB: Double) {
-        _ = equalizer?.setOutputGainDB(gainDB)
+        _ = equalizer.setOutputGainDB(gainDB)
     }
 
     func setBypassed(_ bypassed: Bool) {
-        _ = equalizer?.setBypassed(bypassed)
+        _ = equalizer.setBypassed(bypassed)
     }
 
     func stop(keepListening: Bool = false) {
