@@ -13,6 +13,9 @@ export default function App() {
   const filtersRef = useRef<BiquadFilterNode[]>([]);
   const paramFiltersRef = useRef<BiquadFilterNode[]>([]);
   const masterRef = useRef<GainNode | null>(null);
+  const compressorRef = useRef<DynamicsCompressorNode | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [fileName, setFileName] = useState('');
   const [playing, setPlaying] = useState(false);
   const [ready, setReady] = useState(false);
@@ -21,6 +24,9 @@ export default function App() {
   const [values, setValues] = useState<number[]>(FREQUENCIES.map(() => 0));
   const [paramValues, setParamValues] = useState<number[]>(PARAM_FREQS.map(() => 0));
   const [output, setOutput] = useState(0);
+  const [compressorEnabled, setCompressorEnabled] = useState(false);
+  const [threshold, setThreshold] = useState(-24);
+  const [ratio, setRatio] = useState(3);
   const [preset, setPreset] = useState<Preset>('Flat');
   const [message, setMessage] = useState('Carregue uma música para começar');
 
@@ -52,6 +58,16 @@ export default function App() {
       filter.gain.value = paramValues[index] || 0;
       return filter;
     });
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.value = compressorEnabled ? threshold : 0;
+    compressor.ratio.value = compressorEnabled ? ratio : 1;
+    compressor.attack.value = 0.012;
+    compressor.release.value = 0.18;
+    compressor.knee.value = 18;
+    compressor.reduction;
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0.82;
     const master = ctx.createGain();
     master.gain.value = Math.pow(10, output / 20);
     source.connect(filters[0]);
@@ -62,13 +78,17 @@ export default function App() {
     paramFilters.forEach((filter, index) => {
       if (index < paramFilters.length - 1) filter.connect(paramFilters[index + 1]);
     });
-    paramFilters[paramFilters.length - 1].connect(master);
+    paramFilters[paramFilters.length - 1].connect(compressor);
+    compressor.connect(analyser);
+    analyser.connect(master);
     master.connect(ctx.destination);
     contextRef.current = ctx;
     sourceRef.current = source;
     filtersRef.current = filters;
     paramFiltersRef.current = paramFilters;
     masterRef.current = master;
+    compressorRef.current = compressor;
+    analyserRef.current = analyser;
     setReady(true);
     setMessage('Motor de áudio ativo');
   }
@@ -86,12 +106,59 @@ export default function App() {
   }, [paramValues, enabled]);
 
   useEffect(() => {
+    if (compressorRef.current) {
+      compressorRef.current.threshold.setTargetAtTime(compressorEnabled ? threshold : 0, contextRef.current?.currentTime ?? 0, 0.02);
+      compressorRef.current.ratio.setTargetAtTime(compressorEnabled ? ratio : 1, contextRef.current?.currentTime ?? 0, 0.02);
+    }
+  }, [threshold, ratio, compressorEnabled]);
+
+  useEffect(() => {
     masterRef.current?.gain.setTargetAtTime(Math.pow(10, output / 20), contextRef.current?.currentTime ?? 0, 0.015);
   }, [output]);
 
   useEffect(() => () => {
     contextRef.current?.close();
   }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const analyser = analyserRef.current;
+    if (!canvas || !analyser || !playing) return;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    let frame = 0;
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    const draw = () => {
+      analyser.getByteFrequencyData(data);
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+      }
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      context.clearRect(0, 0, width, height);
+      const count = 64;
+      const gap = 3;
+      const barWidth = Math.max(1, (width - gap * (count - 1)) / count);
+      for (let i = 0; i < count; i++) {
+        const start = Math.floor(Math.pow(i / count, 2.15) * data.length);
+        const end = Math.max(start + 1, Math.floor(Math.pow((i + 1) / count, 2.15) * data.length));
+        let peak = 0;
+        for (let j = start; j < end; j++) peak = Math.max(peak, data[j]);
+        const barHeight = Math.max(2, (peak / 255) * (height - 5));
+        const x = i * (barWidth + gap);
+        context.fillStyle = i % 3 === 0 ? '#343a42' : '#89919b';
+        context.beginPath();
+        context.roundRect(x, height - barHeight, barWidth, barHeight, 3);
+        context.fill();
+      }
+      frame = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => cancelAnimationFrame(frame);
+  }, [playing, ready]);
 
   async function togglePlayback() {
     const audio = audioRef.current;
@@ -164,7 +231,7 @@ export default function App() {
 
       <section className="analyzer-card">
         <div className="section-heading"><div><p className="section-kicker">LIVE MONITOR</p><h2>Sound Spectrum</h2></div><span className="live-label"><Activity size={14}/> {playing ? 'PLAYING' : 'STANDBY'}</span></div>
-        <div className="spectrum" aria-label="Visualização ilustrativa do espectro">{bars.map((height, i) => <i key={i} style={{ height: (playing ? height : 8 + height * .22) + '%' }}/>)}</div>
+        <canvas ref={canvasRef} className="spectrum-canvas" aria-label="Analisador de espectro de áudio em tempo real" />
         <div className="spectrum-labels"><span>20 Hz</span><span>200 Hz</span><span>2 kHz</span><span>20 kHz</span></div>
       </section>
 
@@ -174,6 +241,8 @@ export default function App() {
         {tab === 'graphic' ? <div className="graphic-eq">{FREQUENCIES.map((frequency, index) => <div className="band" key={frequency}><span className="band-value">{values[index] > 0 ? '+' : ''}{values[index].toFixed(0)}</span><input aria-label={frequency + ' Hz gain'} type="range" min="-12" max="12" step=".5" value={values[index]} onChange={e => updateBand(index, Number(e.target.value))}/><span className="band-frequency">{frequency >= 1000 ? (frequency / 1000).toString().replace('.0','') + 'k' : frequency}</span></div>)}</div> : <div className="parametric-grid">{PARAM_FREQS.map((frequency, index) => <div className="param-band" key={frequency}><strong>{frequency >= 1000 ? frequency / 1000 + ' kHz' : frequency + ' Hz'}</strong><span>{paramValues[index] > 0 ? '+' : ''}{paramValues[index].toFixed(1)} dB</span><input type="range" min="-12" max="12" step=".5" value={paramValues[index]} onChange={e => updateParam(index, Number(e.target.value))}/><small>Q 1.0 · Peaking</small></div>)}</div>}
         <div className="eq-footer"><label>PREAMP / OUTPUT <strong>{output > 0 ? '+' : ''}{output.toFixed(1)} dB</strong></label><input type="range" min="-12" max="6" step=".5" value={output} onChange={e => setOutput(Number(e.target.value))}/><button className="reset-button" onClick={() => { applyPreset('Flat'); setOutput(0); }}><RotateCcw size={14}/> Reset EQ</button></div>
       </section>
+
+      <section className="presets-card"><div className="section-heading"><div><p className="section-kicker">DYNAMICS PROCESSING</p><h2>Compressor</h2></div><button className={'power-button ' + (compressorEnabled ? 'on' : '')} onClick={() => setCompressorEnabled(v => !v)}><Power size={16}/> {compressorEnabled ? 'ON' : 'OFF'}</button></div><p className="module-copy">Controle a dinâmica e reduza picos. O compressor não aumenta automaticamente o volume percebido.</p><div className="dynamics-grid"><label>THRESHOLD <strong>{threshold} dB</strong><input type="range" min="-60" max="0" step="1" value={threshold} onChange={e => setThreshold(Number(e.target.value))}/></label><label>RATIO <strong>{ratio.toFixed(1)}:1</strong><input type="range" min="1" max="12" step="0.5" value={ratio} onChange={e => setRatio(Number(e.target.value))}/></label></div></section>
 
       <section className="presets-card"><div className="section-heading"><div><p className="section-kicker">QUICK TUNING</p><h2>Sound Presets</h2></div></div><div className="preset-list">{(['Flat','Bass Boost','Vocal','Bright','Warm'] as Preset[]).map(item => <button key={item} className={preset === item ? 'preset active-preset' : 'preset'} onClick={() => applyPreset(item)}>{item}</button>)}</div></section>
       <footer><span>NEXUS EQUALIZER</span><span>WEB AUDIO ENGINE · PREVIEW 0.1.0</span></footer>
