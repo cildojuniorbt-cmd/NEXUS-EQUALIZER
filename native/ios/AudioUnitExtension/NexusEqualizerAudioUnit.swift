@@ -194,10 +194,10 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
                 }
 
                 if eventOffset < frames {
-                    let parameterEvent = current.pointee.parameter
                     switch header.eventType {
                     case .parameter:
-                        Self.Self.applyScheduledParameter(
+                        let parameterEvent = current.pointee.parameter
+                        Self.applyScheduledParameter(
                             processor: processor,
                             address: parameterEvent.parameterAddress,
                             value: parameterEvent.value,
@@ -205,10 +205,12 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
                             rampDurationFrames: 0
                         )
                     case .parameterRamp:
-                        applyScheduledParameter(
+                        let parameterEvent = current.pointee.parameter
+                        Self.applyScheduledParameter(
                             processor: processor,
                             address: parameterEvent.parameterAddress,
                             value: parameterEvent.value,
+                            sampleRate: sampleRate,
                             rampDurationFrames: parameterEvent.rampDurationSampleFrames
                         )
                     default:
