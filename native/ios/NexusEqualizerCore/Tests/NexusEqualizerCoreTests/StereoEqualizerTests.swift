@@ -153,4 +153,28 @@ final class StereoEqualizerTests: XCTestCase {
         XCTAssertTrue(engine.setBand(index: 0, gainDB: 0))
     }
 
+
+    func testRealtimeRenderThreadUpdatesApplyImmediately() throws {
+        let engine = try XCTUnwrap(RealtimeStereoEqualizer())
+        XCTAssertTrue(engine.setBypassedAtRenderTime(true))
+        XCTAssertTrue(engine.setOutputGainAtRenderTime(6))
+        var left: [Float] = [0.1, 0.2]
+        var right: [Float] = [-0.1, -0.2]
+        left.withUnsafeMutableBufferPointer { l in
+            right.withUnsafeMutableBufferPointer { r in
+                engine.processPlanar(left: l.baseAddress!, right: r.baseAddress!, frameCount: l.count)
+            }
+        }
+        let gain = Float(pow(10, 6.0 / 20.0))
+        XCTAssertEqual(left[0], 0.1 * gain, accuracy: 0.0001)
+        XCTAssertEqual(right[1], -0.2 * gain, accuracy: 0.0001)
+    }
+
+    func testRealtimeRenderThreadRejectsInvalidValues() throws {
+        let engine = try XCTUnwrap(RealtimeStereoEqualizer())
+        XCTAssertFalse(engine.setBandAtRenderTime(index: 0, gainDB: .nan, sampleRate: 48_000))
+        XCTAssertFalse(engine.setBandAtRenderTime(index: 0, gainDB: 3, sampleRate: .infinity))
+        XCTAssertFalse(engine.setOutputGainAtRenderTime(.nan))
+    }
+
 }
