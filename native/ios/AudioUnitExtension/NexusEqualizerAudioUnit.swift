@@ -14,6 +14,7 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
     private let inputBus: AUAudioUnitBus
     private let outputBus: AUAudioUnitBus
     private var processor: RealtimeStereoEqualizer?
+    private var selectedFactoryPreset: AUAudioUnitPreset?
     private var parametersByAddress: [AUParameterAddress: AUParameter] = [:]
 
     public override init(
@@ -35,6 +36,46 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
         maximumFramesToRender = 4096
         processor = RealtimeStereoEqualizer()
         buildParameterTree()
+    }
+
+    public override var factoryPresets: [AUAudioUnitPreset]? {
+        [
+            makePreset(number: 0, name: "Flat"),
+            makePreset(number: 1, name: "Bass Boost"),
+            makePreset(number: 2, name: "Vocal"),
+            makePreset(number: 3, name: "Rock"),
+            makePreset(number: 4, name: "Pop")
+        ]
+    }
+
+    public override var currentPreset: AUAudioUnitPreset? {
+        get { selectedFactoryPreset }
+        set {
+            guard let newValue,
+                  let preset = EqualizerPreset(rawValue: newValue.name) else {
+                selectedFactoryPreset = nil
+                return
+            }
+            selectedFactoryPreset = newValue
+            applyFactoryPreset(preset)
+        }
+    }
+
+    private func makePreset(number: Int, name: String) -> AUAudioUnitPreset {
+        let preset = AUAudioUnitPreset()
+        preset.number = number
+        preset.name = name
+        return preset
+    }
+
+    private func applyFactoryPreset(_ preset: EqualizerPreset) {
+        guard let processor else { return }
+        let gains = preset.tenBandGainsDB
+        for (index, gain) in gains.enumerated() {
+            let address = Address.firstBand + AUParameterAddress(index)
+            guard let parameter = parametersByAddress[address] else { continue }
+            parameter.value = AUValue(gain)
+        }
     }
 
     private func buildParameterTree() {
@@ -131,8 +172,4 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
         }
     }
 
-    public override var fullState: [String: Any]? {
-        get { super.fullState }
-        set { super.fullState = newValue }
-    }
 }
