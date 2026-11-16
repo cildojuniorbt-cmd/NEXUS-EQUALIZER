@@ -21,3 +21,12 @@
 .filter-control small{font:10px Manrope,sans-serif;color:#8b9199}
 
 .param-band select{width:100%;min-width:0;border:1px solid #e1e3e6;border-radius:7px;padding:8px;background:#f8f9fa;color:#343a42;font:10px Manrope,sans-serif}
+
+.save-preset-row{display:flex;gap:8px;margin-top:16px}
+.save-preset-row input{flex:1;min-width:0;border:1px solid #e1e3e6;border-radius:9px;padding:11px 12px;background:#fafbfb;color:#30363d;font:11px Manrope,sans-serif}
+.save-preset-button{border:0;border-radius:9px;padding:10px 14px;background:#292e35;color:white;font:700 11px Manrope,sans-serif;white-space:nowrap}
+.save-preset-button:disabled{opacity:.4}
+.custom-preset-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.custom-preset{display:flex;align-items:center;border:1px solid #e1e3e6;border-radius:9px;overflow:hidden;background:#fafbfb}
+.custom-preset button{border:0;background:transparent;padding:9px 11px;color:#343a42;font:11px Manrope,sans-serif}
+.custom-preset .delete-preset{border-left:1px solid #e1e3e6;color:#9b5555;font-size:17px;padding:5px 10px}
