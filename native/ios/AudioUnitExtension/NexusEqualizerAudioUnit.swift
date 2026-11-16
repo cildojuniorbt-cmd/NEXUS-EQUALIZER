@@ -182,7 +182,8 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
             var event = realtimeEventListHead
             while let current = event {
                 let header = current.pointee.head
-                let offset64 = max(0, header.eventSampleTime - cycleStart)
+                let timeDelta = header.eventSampleTime.subtractingReportingOverflow(cycleStart)
+                let offset64 = timeDelta.overflow ? 0 : max(0, timeDelta.partialValue)
                 let eventOffset = min(frames, Int(min(offset64, AUEventSampleTime(Int64(frames)))))
                 if eventOffset > processedFrames {
                     processor.processPlanarSegment(
@@ -265,7 +266,7 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
                 _ = processor.setBandAtRenderTime(
                     index: band,
                     gainDB: Double(value),
-                    sampleRate: inputBus.format.sampleRate
+                    sampleRate: sampleRate
                 )
             }
         default:
