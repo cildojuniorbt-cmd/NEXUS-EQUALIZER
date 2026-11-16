@@ -33,6 +33,8 @@ bool nexus_eq_realtime_set_output_gain(NexusEQRealtime *eq, float linear_gain);
 
 /* In-place interleaved stereo render. No locks, allocations, or system calls. */
 void nexus_eq_realtime_render(NexusEQRealtime *eq, float *interleaved, size_t sample_count);
+/* Planar float render for AUv3 non-interleaved buffers. right may be NULL for mono. */
+void nexus_eq_realtime_render_planar(NexusEQRealtime *eq, float *left, float *right, size_t frame_count);
 
 #ifdef __cplusplus
 }
