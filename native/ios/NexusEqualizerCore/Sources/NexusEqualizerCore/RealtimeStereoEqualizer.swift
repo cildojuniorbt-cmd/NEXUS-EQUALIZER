@@ -52,6 +52,46 @@ public final class RealtimeStereoEqualizer {
         return nexus_eq_realtime_set_output_gain(handle, linear)
     }
 
+
+    /// Applies an immediate parameter update from the AU render thread.
+    /// Must only be called by the same thread that calls processPlanar.
+    @discardableResult
+    public func setBandAtRenderTime(index: Int, gainDB: Double, sampleRate: Double) -> Bool {
+        guard Self.bandFrequencies.indices.contains(index),
+              gainDB.isFinite, sampleRate.isFinite, sampleRate > 0 else { return false }
+        let filter = BiquadEQ(
+            frequency: Self.bandFrequencies[index],
+            gainDB: min(18, max(-18, gainDB)),
+            sampleRate: sampleRate
+        )
+        return setRenderCoefficients(filter.coefficients(), band: index)
+    }
+
+    @discardableResult
+    public func setBypassedAtRenderTime(_ bypassed: Bool) -> Bool {
+        nexus_eq_realtime_render_set_bypass(handle, bypassed)
+    }
+
+    @discardableResult
+    public func setOutputGainAtRenderTime(_ gainDB: Double) -> Bool {
+        guard gainDB.isFinite else { return false }
+        let clamped = min(6, max(-24, gainDB))
+        let linear = Float(pow(10, clamped / 20))
+        return nexus_eq_realtime_render_set_output_gain(handle, linear)
+    }
+
+    private func setRenderCoefficients(_ coefficients: BiquadCoefficients, band: Int) -> Bool {
+        guard coefficients.b0.isFinite, coefficients.b1.isFinite,
+              coefficients.b2.isFinite, coefficients.a1.isFinite,
+              coefficients.a2.isFinite else { return false }
+        let c = NexusEQBiquadCoefficients(
+            b0: Float(coefficients.b0), b1: Float(coefficients.b1),
+            b2: Float(coefficients.b2), a1: Float(coefficients.a1),
+            a2: Float(coefficients.a2)
+        )
+        return nexus_eq_realtime_render_set_coefficients(handle, band, c)
+    }
+
     /// Processes planar float buffers in place without locks or allocations.
     public func processPlanar(left: UnsafeMutablePointer<Float>, right: UnsafeMutablePointer<Float>?, frameCount: Int) {
         guard frameCount > 0 else { return }
