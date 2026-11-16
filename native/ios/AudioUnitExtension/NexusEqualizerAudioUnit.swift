@@ -159,7 +159,7 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
         }
         let sampleRate = inputBus.format.sampleRate
         return { actionFlags, timestamp, frameCount, outputBusNumber, outputData, realtimeEventListHead, pullInputBlock in
-            guard outputBusNumber == 0, let outputData, let pullInputBlock else {
+            guard outputBusNumber == 0, let pullInputBlock else {
                 return kAudioUnitErr_InvalidParameter
             }
             let pullStatus = pullInputBlock(
@@ -167,7 +167,7 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
             )
             guard pullStatus == noErr else { return pullStatus }
 
-            var buffers = UnsafeMutableAudioBufferListPointer(outputData)
+            let buffers = UnsafeMutableAudioBufferListPointer(outputData)
             guard buffers.count > 0 else { return kAudioUnitErr_InvalidPropertyValue }
             let frames = Int(frameCount)
             guard let leftRaw = buffers[0].mData else { return kAudioUnitErr_InvalidPropertyValue }
