@@ -15,11 +15,18 @@ targets:
       - path: StandaloneApp
         excludes:
           - README.md
+      - path: MediaDeviceRouting/AudioIO.swift
+      - path: MediaDeviceRouting/LowPass.swift
+      - path: MediaDeviceRouting/LocalLink.m
     dependencies:
       - package: NexusEqualizerCore
         product: NexusEqualizerCore
       - target: NexusEqualizerAUv3
         embed: true
+      - target: NexusEqualizerMediaDevice
+        embed: true
+      - sdk: AVFoundation.framework
+      - sdk: Network.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nexusworks.equalizer
@@ -28,7 +35,9 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_KEY_CFBundleDisplayName: NEXUS EQUALIZER
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: MediaDeviceRouting/App-Info.plist
+        CODE_SIGN_ENTITLEMENTS: MediaDeviceRouting/App.entitlements
+        SWIFT_OBJC_BRIDGING_HEADER: MediaDeviceRouting/App-Bridging-Header.h
         CODE_SIGN_STYLE: Automatic
   NexusEqualizerAUv3:
     type: app-extension
@@ -51,11 +60,41 @@ targets:
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
         CODE_SIGN_STYLE: Automatic
+
+  NexusEqualizerMediaDevice:
+    type: extensionkit-extension
+    platform: iOS
+    sources:
+      - path: MediaDeviceRouting/PassthroughExtension.swift
+      - path: MediaDeviceRouting/MDPDriver.h
+      - path: MediaDeviceRouting/MDPDriver.m
+      - path: MediaDeviceRouting/LocalLink.h
+      - path: MediaDeviceRouting/LocalLink.m
+    dependencies:
+      - sdk: MediaDevice.framework
+      - sdk: CoreAudio.framework
+      - sdk: AudioToolbox.framework
+      - sdk: AVFoundation.framework
+      - sdk: Network.framework
+      - sdk: ExtensionFoundation.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nexusworks.equalizer.mde
+        PRODUCT_NAME: NEXUS EQUALIZER Media Device
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_FILE: MediaDeviceRouting/Extension-Info.plist
+        CODE_SIGN_ENTITLEMENTS: MediaDeviceRouting/Extension.entitlements
+        SWIFT_OBJC_BRIDGING_HEADER: MediaDeviceRouting/Extension-Bridging-Header.h
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+        CODE_SIGN_STYLE: Automatic
 schemes:
   NexusEqualizer:
     build:
       targets:
         NexusEqualizer: all
         NexusEqualizerAUv3: all
+        NexusEqualizerMediaDevice: all
     run:
       config: Debug
