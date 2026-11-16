@@ -177,4 +177,44 @@ final class StereoEqualizerTests: XCTestCase {
         XCTAssertFalse(engine.setOutputGainAtRenderTime(.nan))
     }
 
+
+    func testRealtimeOutputGainRampContinuesAcrossRenderBlocks() throws {
+        let engine = try XCTUnwrap(RealtimeStereoEqualizer())
+        XCTAssertTrue(engine.setBypassedAtRenderTime(true))
+        XCTAssertTrue(engine.rampOutputGainAtRenderTime(targetGainDB: 6, durationFrames: 4))
+
+        var firstLeft: [Float] = [1, 1]
+        var firstRight: [Float] = [1, 1]
+        firstLeft.withUnsafeMutableBufferPointer { left in
+            firstRight.withUnsafeMutableBufferPointer { right in
+                engine.processPlanar(left: left.baseAddress!, right: right.baseAddress!, frameCount: 2)
+            }
+        }
+
+        var secondLeft: [Float] = [1, 1]
+        var secondRight: [Float] = [1, 1]
+        secondLeft.withUnsafeMutableBufferPointer { left in
+            secondRight.withUnsafeMutableBufferPointer { right in
+                engine.processPlanar(left: left.baseAddress!, right: right.baseAddress!, frameCount: 2)
+            }
+        }
+
+        let target = Float(pow(10, 6.0 / 20.0))
+        XCTAssertGreaterThan(firstLeft[0], 1)
+        XCTAssertLessThan(firstLeft[0], firstLeft[1])
+        XCTAssertLessThan(firstLeft[1], secondLeft[0])
+        XCTAssertLessThan(secondLeft[0], secondLeft[1])
+        XCTAssertEqual(secondLeft[1], target, accuracy: 0.0001)
+    }
+
+    func testRealtimeBandRampAcceptsValidDuration() throws {
+        let engine = try XCTUnwrap(RealtimeStereoEqualizer())
+        XCTAssertTrue(engine.rampBandAtRenderTime(
+            index: 0, targetGainDB: 12, sampleRate: 48_000, durationFrames: 128
+        ))
+        XCTAssertFalse(engine.rampBandAtRenderTime(
+            index: 0, targetGainDB: 12, sampleRate: 48_000, durationFrames: 0
+        ))
+    }
+
 }
