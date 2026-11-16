@@ -2,7 +2,7 @@ name: NexusEqualizer
 options:
   bundleIdPrefix: com.nexusworks
   deploymentTarget:
-    iOS: "15.0"
+    iOS: "27.0"
   createIntermediateGroups: true
 packages:
   NexusEqualizerCore:
