@@ -17,6 +17,7 @@
 //  自分の音が仮想デバイスへ戻る（実機で確認。名乗らない側は 6 回とも起きなかった）。
 
 import AVFoundation
+import NexusEqualizerCore
 import Darwin
 import os
 
