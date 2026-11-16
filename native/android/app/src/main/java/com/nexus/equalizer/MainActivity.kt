@@ -25,6 +25,11 @@ import kotlin.math.min
 
 class MainActivity : Activity() {
     private val equalizer = SystemEqualizerController()
+    private val bassEngine = SystemBassBoostController()
+    private lateinit var bassStatusText: TextView
+    private lateinit var bassSwitch: Switch
+    private lateinit var bassStrength: SeekBar
+    private lateinit var bassValue: TextView
     private val preferences by lazy { getSharedPreferences("nexus-eq", MODE_PRIVATE) }
     private lateinit var statusText: TextView
     private lateinit var bandsContainer: LinearLayout
@@ -61,7 +66,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (::statusText.isInitialized) refreshEffect()
+        if (::statusText.isInitialized) { refreshEffect(); refreshBassEngine() }
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
@@ -238,6 +243,11 @@ class MainActivity : Activity() {
             pageContainer.addView(eqPage)
             return
         }
+        if (index == 1) {
+            pageContainer.addView(buildDspPage())
+            refreshBassEngine()
+            return
+        }
         val titles = listOf("", "DSP STUDIO", "ROOM STUDIO", "HEADPHONE STUDIO", "AUDIO ANALYZER")
         val subtitles = listOf("", "Processamento e efeitos", "Ambientes e correção acústica", "Perfis e calibração de fones", "Medição e monitoramento")
         val descriptions = listOf(
@@ -382,6 +392,64 @@ class MainActivity : Activity() {
         curveView.setGains(gains)
     }
 
+
+    private fun buildDspPage(): LinearLayout {
+        val page = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(8), 0, dp(24)) }
+        page.addView(text("NEXUS / DSP ENGINE", 10f, cyan, true))
+        page.addView(text("DSP STUDIO", 24f, white, true).apply { setPadding(0, dp(6), 0, dp(5)) })
+        page.addView(text("Processamento de graves na saída de áudio", 13f, muted).apply { setPadding(0, 0, 0, dp(18)) })
+        val statusCard = card()
+        statusCard.addView(text("BASS ENGINE", 13f, white, true))
+        bassStatusText = text("Verificando disponibilidade…", 12f, muted).apply { setPadding(0, dp(7), 0, 0) }
+        statusCard.addView(bassStatusText)
+        page.addView(statusCard, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(14) })
+        val controlCard = card()
+        val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val labels = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        labels.addView(text("BASS BOOST", 13f, white, true))
+        labels.addView(text("Reforço de baixas frequências", 11f, muted).apply { setPadding(0, dp(4), 0, 0) })
+        header.addView(labels, LinearLayout.LayoutParams(0, -2, 1f))
+        bassSwitch = Switch(this).apply { text = ""; thumbTintList = ColorStateList.valueOf(white); trackTintList = ColorStateList.valueOf(cyan) }
+        header.addView(bassSwitch); controlCard.addView(header)
+        val strengthHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(20), 0, dp(5)) }
+        strengthHeader.addView(text("INTENSIDADE", 11f, muted, true), LinearLayout.LayoutParams(0, -2, 1f))
+        bassValue = text("0%", 12f, cyan, true); strengthHeader.addView(bassValue); controlCard.addView(strengthHeader)
+        bassStrength = SeekBar(this).apply { max = 1000; progress = 0; progressTintList = ColorStateList.valueOf(cyan); thumbTintList = ColorStateList.valueOf(cyan); progressBackgroundTintList = ColorStateList.valueOf(0xFF34414D.toInt()) }
+        controlCard.addView(bassStrength); page.addView(controlCard)
+        bassSwitch.setOnCheckedChangeListener { _, enabled -> if (!bassEngine.setEnabled(enabled)) { bassStatusText.text = "Não foi possível ativar o Bass Engine nesta rota."; bassSwitch.setOnCheckedChangeListener(null); bassSwitch.isChecked = false; bassSwitch.setOnCheckedChangeListener { _, value -> toggleBass(value) } } }
+        bassStrength.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                bassValue.text = "${progress / 10}%"
+                if (fromUser && !bassEngine.setStrength(progress)) bassStatusText.text = "O aparelho não aceitou o ajuste de intensidade."
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+            override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+        })
+        return page
+    }
+
+    private fun refreshBassEngine() {
+        if (!::bassStatusText.isInitialized) return
+        val status = bassEngine.connect()
+        bassStatusText.text = status.message
+        bassSwitch.setOnCheckedChangeListener(null)
+        bassSwitch.isEnabled = status.available
+        bassSwitch.isChecked = status.available && status.enabled
+        bassStrength.isEnabled = status.available && status.strengthSupported
+        bassStrength.progress = if (status.available) status.strength else 0
+        bassValue.text = "${bassStrength.progress / 10}%"
+        bassSwitch.setOnCheckedChangeListener { _, enabled -> toggleBass(enabled) }
+    }
+
+    private fun toggleBass(enabled: Boolean) {
+        if (!bassEngine.setEnabled(enabled)) {
+            bassStatusText.text = "Não foi possível alterar o Bass Engine."
+            bassSwitch.setOnCheckedChangeListener(null)
+            bassSwitch.isChecked = false
+            bassSwitch.setOnCheckedChangeListener { _, value -> toggleBass(value) }
+        }
+    }
+
     private fun toggleEffect(checked: Boolean) {
         if (equalizer.setEnabled(checked)) preferences.edit().putBoolean("enabled", checked).apply()
         else statusText.text = "Não foi possível alterar o estado do efeito."
@@ -437,6 +505,7 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         equalizer.release()
+        bassEngine.release()
         super.onDestroy()
     }
 
