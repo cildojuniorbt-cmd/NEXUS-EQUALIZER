@@ -4,9 +4,7 @@ import android.media.audiofx.Equalizer
 
 /**
  * Best-effort legacy output-mix equalizer.
- *
- * Session 0 is deprecated for global output effects and is not supported consistently
- * across Android devices. Never infer global routing from successful construction alone.
+ * Session 0 is deprecated for global output effects and OEM routing varies.
  */
 class SystemEqualizerController {
     enum class State { UNAVAILABLE, CONTROL_OWNED_ELSEWHERE, AVAILABLE_AND_CONTROLLED }
@@ -16,7 +14,8 @@ class SystemEqualizerController {
         val message: String,
         val bandCount: Int = 0,
         val minLevelMb: Int = 0,
-        val maxLevelMb: Int = 0
+        val maxLevelMb: Int = 0,
+        val enabled: Boolean = false
     )
 
     private var effect: Equalizer? = null
@@ -39,21 +38,31 @@ class SystemEqualizerController {
                     val range = candidate.bandLevelRange
                     Status(
                         State.AVAILABLE_AND_CONTROLLED,
-                        "O Android disponibilizou um efeito de saída. A aplicação real pode variar por aparelho.",
+                        "Efeito de saída disponível. A aplicação ao áudio de outros apps varia por aparelho.",
                         candidate.numberOfBands.toInt(),
                         range[0].toInt(),
-                        range[1].toInt()
+                        range[1].toInt(),
+                        candidate.enabled
                     )
                 }
             }
         } catch (error: Exception) {
             effect = null
-            Status(
-                State.UNAVAILABLE,
-                "Equalização global indisponível neste aparelho: ${error.javaClass.simpleName}."
-            )
+            Status(State.UNAVAILABLE, "Equalização global indisponível: ${error.javaClass.simpleName}.")
         }
     }
+
+    fun centerFrequencyHz(index: Int): Int? = try {
+        val current = effect ?: return null
+        if (!current.hasControl() || index !in 0 until current.numberOfBands) null
+        else current.getCenterFreq(index.toShort()).coerceAtLeast(0) / 1000
+    } catch (_: Exception) { null }
+
+    fun bandLevel(index: Int): Int? = try {
+        val current = effect ?: return null
+        if (!current.hasControl() || index !in 0 until current.numberOfBands) null
+        else current.getBandLevel(index.toShort()).toInt()
+    } catch (_: Exception) { null }
 
     fun setBandLevel(index: Int, levelMb: Int): Boolean {
         val current = effect ?: return false
@@ -62,9 +71,7 @@ class SystemEqualizerController {
             val range = current.bandLevelRange
             current.setBandLevel(index.toShort(), levelMb.coerceIn(range[0].toInt(), range[1].toInt()).toShort())
             true
-        } catch (_: Exception) {
-            false
-        }
+        } catch (_: Exception) { false }
     }
 
     fun setEnabled(enabled: Boolean): Boolean {
@@ -73,9 +80,7 @@ class SystemEqualizerController {
             if (!current.hasControl()) return false
             current.enabled = enabled
             current.enabled == enabled
-        } catch (_: Exception) {
-            false
-        }
+        } catch (_: Exception) { false }
     }
 
     fun release() {
