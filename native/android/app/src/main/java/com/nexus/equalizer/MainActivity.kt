@@ -19,6 +19,7 @@ class MainActivity : Activity() {
     private lateinit var presetsContainer: LinearLayout
     private lateinit var enableSwitch: Switch
     private val bandSliders = mutableListOf<SeekBar>()
+    private val presetChips = mutableListOf<TextView>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,6 +101,7 @@ class MainActivity : Activity() {
         bandsContainer.removeAllViews()
         presetsContainer.removeAllViews()
         bandSliders.clear()
+        presetChips.clear()
         val available = status.state == SystemEqualizerController.State.AVAILABLE_AND_CONTROLLED
         val savedPreset = preferences.getString("preset", null)
             ?.let { name -> EqPreset.values().firstOrNull { it.name == name } }
@@ -148,6 +150,7 @@ class MainActivity : Activity() {
                 setPadding(18, 12, 18, 12)
                 setOnClickListener { applyPreset(preset, status) }
             }
+            presetChips.add(chip)
             val params = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -173,6 +176,7 @@ class MainActivity : Activity() {
                                 .putString("preset", "CUSTOM")
                                 .putInt("band_level_$index", level)
                                 .apply()
+                            updatePresetChipStyles(null)
                             if (!equalizer.setBandLevel(index, level)) {
                                 statusText.text = "Não foi possível alterar a banda. O controle pode ter sido transferido."
                             }
@@ -212,9 +216,23 @@ class MainActivity : Activity() {
                 editor.putInt("band_level_$index", gainMb)
             }
             editor.apply()
+            updatePresetChipStyles(preset)
             statusText.text = "Preset ${preset.title} aplicado às bandas disponíveis do aparelho."
         } else {
             statusText.text = "Não foi possível aplicar todas as bandas. O controle pode ter sido perdido."
+        }
+    }
+
+    private fun updatePresetChipStyles(selected: EqPreset?) {
+        presetChips.forEachIndexed { index, chip ->
+            val preset = EqPreset.values().getOrNull(index)
+            val isSelected = preset != null && preset == selected
+            chip.setBackgroundColor(
+                if (isSelected) 0xFF5DE1E6.toInt() else 0xFF27313D.toInt()
+            )
+            chip.setTextColor(
+                if (isSelected) 0xFF11151B.toInt() else 0xFFFFFFFF.toInt()
+            )
         }
     }
 
