@@ -227,6 +227,11 @@ final class AudioIO: ObservableObject {
         }
 
         let sr = session.sampleRate > 0 ? session.sampleRate : 48000
+
+        guard let equalizer else {
+            status = "NEXUS DSP could not be initialized"
+            return
+        }
         // リンクと DSP は 48kHz 固定。AVAudioEngine の mixer が、
         // source node の 48kHz PCM を現在の物理出力レートへ変換する。
         // .mixWithOthers では先に鳴っているアプリがハードウェアのレートを
@@ -333,11 +338,11 @@ final class AudioIO: ObservableObject {
     }
 
     func setOutputGain(gainDB: Double) {
-        _ = equalizer.setOutputGainDB(gainDB)
+        _ = equalizer?.setOutputGainDB(gainDB)
     }
 
     func setBypassed(_ bypassed: Bool) {
-        _ = equalizer.setBypassed(bypassed)
+        _ = equalizer?.setBypassed(bypassed)
     }
 
     func stop(keepListening: Bool = false) {
