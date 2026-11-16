@@ -2,7 +2,7 @@
 
 ## Product goal
 
-NEXUS EQUALIZER should process audio already playing in other iPhone apps, without importing tracks or requiring a built-in music player. The user selects **NEXUS EQUALIZER** as the output in the iOS Control Center audio output picker; iOS routes eligible playback through the NEXUS processing path and then to the physical output that was in use.
+NEXUS EQUALIZER should process audio already playing in other iPhone apps, without importing tracks or requiring a built-in music player. The user selects **NEXUS EQUALIZER** as the output in the iOS iOS audio output picker; iOS routes eligible playback through the NEXUS processing path and then to the physical output that was in use.
 
 ## Verified platform capability
 
@@ -22,7 +22,7 @@ The open-source MIT project [EffectDeck](https://github.com/satomasahiro2005/Eff
 
 The reference flow is:
 1. A `MediaDeviceExtension` advertises a virtual output device in the system route picker.
-2. The user selects it in Control Center.
+2. The user selects it in the iOS audio output picker.
 3. The extension activates an Audio Server Plug-In.
 4. The plug-in receives the system mix as real-time PCM samples.
 5. The extension forwards samples to the containing app over a local loopback transport.
