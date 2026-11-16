@@ -1,5 +1,5 @@
 //  AudioIO.swift
-//  拡張から届いた PCM をローパスに通して、スピーカーへ返す。
+//  拡張から届いた PCM を NEXUS EQ に通して、スピーカーへ返す。
 //
 //  なぜ鳴らすのが本体で、拡張ではないのか（いずれも実機で確定）:
 //    - 拡張プロセスは AVAudioSession を開けない（'msrv'）。
@@ -13,7 +13,7 @@
 //  **MPNowPlayingInfoCenter / MPRemoteCommandCenter を使わない。**
 //  now playing 能力を名乗ると、MediaExperience がこのセッションを SystemMusic の
 //  ルーティングコンテキストへ移し、routeSharingPolicy を LongFormAudio(1) に書き換える。
-//  その方針のアプリは全部同じ出力先へ流れる＝いま選ばれている Passthrough なので、
+//  その方針のアプリは全部同じ出力先へ流れる＝いま選ばれている NEXUS EQUALIZER なので、
 //  自分の音が仮想デバイスへ戻る（実機で確認。名乗らない側は 6 回とも起きなかった）。
 
 import AVFoundation
@@ -32,7 +32,7 @@ private final class RenderState {
     let interleaved: UnsafeMutablePointer<Float>
     /// 並べ替えたあとのプレーナ（capacity * 2）。L が前半、R が後半。
     let planar: UnsafeMutablePointer<Float>
-    /// フィルタは AudioIO が持っているものを借りる。UI から触るため。
+    /// NEXUS のリアルタイム EQ エンジン。
     let equalizer: RealtimeStereoEqualizer
 
     init(capacity: Int, sampleRate: Double, equalizer: RealtimeStereoEqualizer) {
@@ -56,7 +56,7 @@ final class AudioIO: ObservableObject {
 
     static let shared = AudioIO()
 
-    private let log = Logger(subsystem: "ai.nemut.mdepass", category: "audio")
+    private let log = Logger(subsystem: "com.nexusworks.equalizer", category: "audio")
 
     /// mediaServicesWereReset のあとは古い engine が死んでいて二度と start しない。
     /// 作り直せるように let ではなく var。
@@ -77,7 +77,7 @@ final class AudioIO: ObservableObject {
     @Published var sampleRate: Double = 48000
     @Published var status = "Waiting for the extension"
     @Published var route = "—"
-    /// 出力先が仮想デバイス Passthrough のままか。鎖が自分に戻っている。
+    /// 出力先が仮想デバイス NEXUS EQUALIZER のままか。鎖が自分に戻っている。
     @Published var loopback = false
 
 
@@ -393,9 +393,9 @@ final class AudioIO: ObservableObject {
         //
         // 名前で見る。ドライバは kAudioDeviceTransportTypeRemoteStreaming で名乗るので
         // portType は .airPlay になり、本物の AirPlay スピーカーと区別がつかない。
-        // 名前は MDPDriver.m が返す "Passthrough" 固定。
+        // 名前は MDPDriver.m が返す "NEXUS EQUALIZER" 固定。
         let nowLoop = outs.contains {
-            $0.portName.localizedCaseInsensitiveContains("Passthrough")
+            $0.portName.localizedCaseInsensitiveContains("NEXUS EQUALIZER")
         }
         if loopback != nowLoop { loopback = nowLoop }
     }
