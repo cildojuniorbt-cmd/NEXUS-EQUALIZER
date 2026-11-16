@@ -199,10 +199,10 @@ final class NexusEqualizerMediaDeviceExtension: MediaDeviceExtension, RealtimeSa
     /// 「前回の publish が残した rstm ポートを次の activate までに消す」ことだけで、
     /// それは unpublish の中でやっている。
     ///
-    /// 下の foundDevice はドキュメントの言う口ではない（updateDevices が正しい）。
-    /// stopDeviceDiscovery の lostDevice も同じく doc に無い。どちらも直す価値はあるが、
-    /// gate の分岐とは別の話なので、unpublish の結果を 1 往復見てから触ること。
-    /// 同時に変えると、どちらが効いたのか分からなくなる。
+    /// Apple の MediaDeviceRoutingManager API では foundDevice(_:) と
+    /// lostDevice(_:) がデバイス探索の通知として公開されている。
+    /// Mantém-se este fluxo documentado; não misturar alterações de descoberta
+    /// com a investigação independente do ciclo de vida do Audio Server Plug-In.
     func deactivateDevice(_ device: MediaOutputDevice, session: MediaOutputSession) {
         log.notice("deactivateDevice")
         reportTimer?.invalidate()
