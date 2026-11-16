@@ -1,6 +1,6 @@
 # iOS native project
 
-The iOS project is generated from `project.yml` with XcodeGen. The specification creates:
+The iOS project is generated from `project.yml` with XcodeGen. The system-audio routing feature requires iOS 27 and Xcode 27 SDK support. See [IOS27-SYSTEM-AUDIO-ROUTING.md](IOS27-SYSTEM-AUDIO-ROUTING.md) for the architecture being implemented. The specification creates:
 
 - `NexusEqualizer`: SwiftUI host application.
 - `NexusEqualizerAUv3`: Audio Unit v3 effect extension embedded in the app.
