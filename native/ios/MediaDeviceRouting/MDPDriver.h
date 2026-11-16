@@ -31,7 +31,7 @@ NS_ASSUME_NONNULL_BEGIN
 /// **引数の順は channels, frames。** 逆に書くと黙ってチャンネルとフレームが入れ替わる。
 /// - channels: チャンネル数
 /// - frames: フレーム数（チャンネルあたり）
-typedef void (^PassthroughSampleHandler)(const float *_Nonnull *_Nonnull data,
+typedef void (^NEXUS EQUALIZERSampleHandler)(const float *_Nonnull *_Nonnull data,
                                       uint32_t channels,
                                       uint32_t frames,
                                       double hostTime);
@@ -50,7 +50,7 @@ typedef void (^PassthroughSampleHandler)(const float *_Nonnull *_Nonnull data,
 - (void)unpublish;
 
 /// サンプルの受け取りを開始／停止する。
-- (void)startCaptureWithHandler:(PassthroughSampleHandler)handler;
+- (void)startCaptureWithHandler:(NEXUS EQUALIZERSampleHandler)handler;
 - (void)stopCapture;
 
 /// 直近に届いたサンプルの情報（デバッグ用）。
