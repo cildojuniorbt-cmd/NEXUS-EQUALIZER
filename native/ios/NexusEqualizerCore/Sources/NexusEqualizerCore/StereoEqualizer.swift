@@ -25,6 +25,15 @@ public final class StereoEqualizer: @unchecked Sendable {
         filters[index].q = min(12, max(0.1, q))
     }
 
+    /// Applies a built-in ten-band preset to the default ten-band layout.
+    public func apply(preset: EqualizerPreset) {
+        lock.lock(); defer { lock.unlock() }
+        guard filters.count == preset.tenBandGainsDB.count else { return }
+        for index in filters.indices {
+            filters[index].gainDB = preset.tenBandGainsDB[index]
+        }
+    }
+
     public func setBypassed(_ value: Bool) {
         lock.lock(); defer { lock.unlock() }
         bypassed = value
