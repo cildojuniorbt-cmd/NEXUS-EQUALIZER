@@ -2,8 +2,15 @@ const CACHE_PREFIX = 'nexus-eq-shell-';
 const CACHE_NAME = CACHE_PREFIX + 'v1';
 const APP_ROOT = self.registration.scope;
 
-self.addEventListener('install', () => {
-  // Keep the new worker waiting until the user accepts the update.
+self.addEventListener('install', event => {
+  event.waitUntil((async () => {
+    const existingCaches = await caches.keys();
+    const isFirstInstall = !self.registration.active;
+    const isLegacyMigration = existingCaches.some(key => key.startsWith('nexus-equalizer-shell-'));
+    // Activate the first release of this update system so existing installs receive
+    // the in-app update UI. Future releases wait for the user's confirmation.
+    if (isFirstInstall || isLegacyMigration) await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', event => {
