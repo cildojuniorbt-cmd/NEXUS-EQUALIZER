@@ -82,6 +82,29 @@ bool nexus_eq_realtime_set_output_gain(NexusEQRealtime *eq, float linear_gain) {
     return enqueue(eq, command);
 }
 
+
+bool nexus_eq_realtime_render_set_coefficients(
+    NexusEQRealtime *eq, size_t band, NexusEQBiquadCoefficients coefficients) {
+    if (!eq || band >= NEXUS_EQ_BAND_COUNT) return false;
+    if (!isfinite(coefficients.b0) || !isfinite(coefficients.b1) ||
+        !isfinite(coefficients.b2) || !isfinite(coefficients.a1) ||
+        !isfinite(coefficients.a2)) return false;
+    eq->coefficients[band] = coefficients;
+    return true;
+}
+
+bool nexus_eq_realtime_render_set_bypass(NexusEQRealtime *eq, bool bypassed) {
+    if (!eq) return false;
+    eq->bypassed = bypassed;
+    return true;
+}
+
+bool nexus_eq_realtime_render_set_output_gain(NexusEQRealtime *eq, float linear_gain) {
+    if (!eq || !isfinite(linear_gain) || linear_gain < 0.0f || linear_gain > 64.0f) return false;
+    eq->output_gain = linear_gain;
+    return true;
+}
+
 static inline float process_one(float input, const NexusEQBiquadCoefficients *c, BiquadState *s) {
     const float output = c->b0 * input + c->b1 * s->x1 + c->b2 * s->x2
         - c->a1 * s->y1 - c->a2 * s->y2;
