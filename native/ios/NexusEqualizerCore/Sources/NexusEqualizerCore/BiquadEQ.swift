@@ -1,7 +1,22 @@
 import Foundation
 
 /// Normalized direct-form biquad coefficients.
-public struct BiquadCoefficients: Sendable {
+public struct BiquadCoefficients: Sendable, RandomAccessCollection {
+    public typealias Index = Int
+    public var startIndex: Int { 0 }
+    public var endIndex: Int { 5 }
+    public func index(after i: Int) -> Int { i + 1 }
+    public func index(before i: Int) -> Int { i - 1 }
+    public subscript(position: Int) -> Double {
+        switch position {
+        case 0: return b0
+        case 1: return b1
+        case 2: return b2
+        case 3: return a1
+        case 4: return a2
+        default: preconditionFailure("Coefficient index out of range")
+        }
+    }
     public let b0: Double
     public let b1: Double
     public let b2: Double
