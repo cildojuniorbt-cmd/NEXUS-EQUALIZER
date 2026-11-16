@@ -13,7 +13,12 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
 
     private let inputBus: AUAudioUnitBus
     private let outputBus: AUAudioUnitBus
+    private var inputBusArray: AUAudioUnitBusArray!
+    private var outputBusArray: AUAudioUnitBusArray!
     private var processor: RealtimeStereoEqualizer?
+
+    public override var inputBusses: AUAudioUnitBusArray { inputBusArray }
+    public override var outputBusses: AUAudioUnitBusArray { outputBusArray }
     private var selectedFactoryPreset: AUAudioUnitPreset?
     private var parametersByAddress: [AUParameterAddress: AUParameter] = [:]
 
@@ -33,8 +38,8 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
         outputBus.supportedChannelCounts = [1, 2]
         try super.init(componentDescription: componentDescription, options: options)
 
-        inputBusses = AUAudioUnitBusArray(audioUnit: self, busType: .input, busses: [inputBus])
-        outputBusses = AUAudioUnitBusArray(audioUnit: self, busType: .output, busses: [outputBus])
+        inputBusArray = AUAudioUnitBusArray(audioUnit: self, busType: .input, busses: [inputBus])
+        outputBusArray = AUAudioUnitBusArray(audioUnit: self, busType: .output, busses: [outputBus])
         maximumFramesToRender = 4096
         processor = RealtimeStereoEqualizer()
         buildParameterTree()
@@ -180,7 +185,7 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
             processor.beginRenderBlock()
             let cycleStart = AUEventSampleTime(timestamp.pointee.mSampleTime)
             var processedFrames = 0
-            var event: UnsafeMutablePointer<AURenderEvent>? = realtimeEventListHead
+            var event: UnsafePointer<AURenderEvent>? = realtimeEventListHead
             while let current = event {
                 let header = current.pointee.head
                 let timeDelta = header.eventSampleTime.subtractingReportingOverflow(cycleStart)
@@ -219,7 +224,7 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
                         break
                     }
                 }
-                event = header.next
+                event = header.next.map { UnsafePointer($0) }
             }
 
             if processedFrames < frames {
