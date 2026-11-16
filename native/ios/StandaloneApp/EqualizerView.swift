@@ -31,6 +31,12 @@ struct EqualizerView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .task {
+            while !Task.isCancelled {
+                audioIO.tick()
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+        }
     }
 
     private var header: some View {
