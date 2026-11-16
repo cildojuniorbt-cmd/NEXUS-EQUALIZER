@@ -15,6 +15,7 @@
 //  127.0.0.1:47101 をそのまま名乗る（下の localDevice を見ること）。
 
 import Foundation
+import ExtensionFoundation
 import MediaDevice
 import Network
 import UniformTypeIdentifiers
