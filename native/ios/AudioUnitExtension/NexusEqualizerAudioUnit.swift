@@ -165,14 +165,76 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
             let frames = Int(frameCount)
             guard let leftRaw = buffers[0].mData else { return kAudioUnitErr_InvalidPropertyValue }
             let left = leftRaw.assumingMemoryBound(to: Float.self)
-
+            let right: UnsafeMutablePointer<Float>?
             if buffers.count >= 2, let rightRaw = buffers[1].mData {
-                let right = rightRaw.assumingMemoryBound(to: Float.self)
-                processor.processPlanar(left: left, right: right, frameCount: frames)
+                right = rightRaw.assumingMemoryBound(to: Float.self)
             } else {
-                processor.processPlanar(left: left, right: nil, frameCount: frames)
+                right = nil
+            }
+
+            // AU render events are time ordered. Render audio up to each
+            // immediate parameter event, apply it on the render thread, then
+            // continue from the exact sample offset.
+            let cycleStart = AUEventSampleTime(timestamp.pointee.mSampleTime)
+            var processedFrames = 0
+            var event = realtimeEventListHead
+            while let current = event {
+                let header = current.pointee.head
+                let offset64 = max(0, header.eventSampleTime - cycleStart)
+                let eventOffset = min(frames, Int(min(offset64, AUEventSampleTime(Int64(frames)))))
+                if eventOffset > processedFrames {
+                    processor.processPlanar(
+                        left: left.advanced(by: processedFrames),
+                        right: right?.advanced(by: processedFrames),
+                        frameCount: eventOffset - processedFrames
+                    )
+                    processedFrames = eventOffset
+                }
+
+                if eventOffset < frames && header.eventType == .parameter {
+                    let parameterEvent = current.pointee.parameter
+                    applyScheduledParameter(
+                        processor: processor,
+                        address: parameterEvent.parameterAddress,
+                        value: parameterEvent.value
+                    )
+                }
+                event = header.next
+            }
+
+            if processedFrames < frames {
+                processor.processPlanar(
+                    left: left.advanced(by: processedFrames),
+                    right: right?.advanced(by: processedFrames),
+                    frameCount: frames - processedFrames
+                )
             }
             return noErr
+        }
+    }
+
+
+    /// Applies a host-scheduled immediate parameter event on the render thread.
+    /// Parameter ramps are intentionally not treated as immediate changes.
+    private func applyScheduledParameter(
+        processor: RealtimeStereoEqualizer,
+        address: AUParameterAddress,
+        value: AUValue
+    ) {
+        switch address {
+        case Address.bypass:
+            _ = processor.setBypassedAtRenderTime(value >= 0.5)
+        case Address.outputGain:
+            _ = processor.setOutputGainAtRenderTime(Double(value))
+        case Address.firstBand..<(Address.firstBand + AUParameterAddress(RealtimeStereoEqualizer.bandFrequencies.count)):
+            let band = Int(address - Address.firstBand)
+            _ = processor.setBandAtRenderTime(
+                index: band,
+                gainDB: Double(value),
+                sampleRate: inputBus.format.sampleRate
+            )
+        default:
+            break
         }
     }
 
