@@ -6,12 +6,14 @@ on:
     paths:
       - 'native/ios/AudioUnitExtension/**'
       - 'native/ios/NexusEqualizerCore/**'
+      - 'native/ios/project.yml'
       - '.github/workflows/ios-auv3-typecheck.yml'
   pull_request:
     branches: [main]
     paths:
       - 'native/ios/AudioUnitExtension/**'
       - 'native/ios/NexusEqualizerCore/**'
+      - 'native/ios/project.yml'
       - '.github/workflows/ios-auv3-typecheck.yml'
   workflow_dispatch:
 
@@ -20,16 +22,21 @@ jobs:
     runs-on: xcode-27
     steps:
       - uses: actions/checkout@v4
-      - name: Build DSP package for iOS
-        working-directory: native/ios/NexusEqualizerCore
-        run: swift build --triple arm64-apple-ios15.0 --build-path .build-ios
-      - name: Type-check AUv3 extension against iOS SDK
-        working-directory: native/ios/NexusEqualizerCore
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        working-directory: native/ios
+        run: xcodegen generate --spec project.yml
+      - name: Build AUv3 and app against iOS device SDK
+        working-directory: native/ios
         run: |
-          SDK_PATH="$(xcrun --sdk iphoneos --show-sdk-path)"
-          swiftc -typecheck \
-            -target arm64-apple-ios15.0 \
-            -sdk "$SDK_PATH" \
-            -I .build-ios/arm64-apple-ios/debug/Modules \
-            ../AudioUnitExtension/NexusEqualizerAudioUnit.swift \
-            ../AudioUnitExtension/NexusEqualizerAudioUnitFactory.swift
+          xcodebuild \
+            -project NexusEqualizer.xcodeproj \
+            -scheme NexusEqualizer \
+            -destination 'generic/platform=iOS' \
+            -sdk iphoneos \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build
