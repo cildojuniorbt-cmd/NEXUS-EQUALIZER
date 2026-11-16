@@ -1,5 +1,6 @@
 const CACHE_NAME = 'nexus-equalizer-shell-v1';
-const APP_SHELL = ['/'];
+const APP_ROOT = new URL('./', self.registration.scope).toString();
+const APP_SHELL = [APP_ROOT];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
@@ -23,6 +24,6 @@ self.addEventListener('fetch', event => {
         caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
       }
       return response;
-    }).catch(() => request.mode === 'navigate' ? caches.match('/') : Response.error()))
+    }).catch(() => request.mode === 'navigate' ? caches.match(APP_ROOT) : Response.error()))
   );
 });
