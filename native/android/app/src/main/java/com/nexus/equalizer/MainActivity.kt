@@ -1,6 +1,7 @@
 package com.nexus.equalizer
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
@@ -30,6 +31,7 @@ class MainActivity : Activity() {
     private lateinit var bassSwitch: Switch
     private lateinit var bassStrength: SeekBar
     private lateinit var bassValue: TextView
+    private lateinit var updateStatusText: TextView
     private val preferences by lazy { getSharedPreferences("nexus-eq", MODE_PRIVATE) }
     private lateinit var statusText: TextView
     private lateinit var bandsContainer: LinearLayout
@@ -67,6 +69,33 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (::statusText.isInitialized) { refreshEffect(); refreshBassEngine() }
+    }
+
+
+    private fun checkForUpdates() {
+        updateStatusText.text = "Consultando servidor de atualizações…"
+        InAppUpdater.check(this) { result ->
+            result.onSuccess { update ->
+                if (update == null) {
+                    updateStatusText.text = "Você já está usando a versão mais recente."
+                } else {
+                    updateStatusText.text = "Nova versão disponível: ${update.version}"
+                    val details = update.notes.ifBlank { "Correções e melhorias do NEXUS EQUALIZER." }
+                    AlertDialog.Builder(this)
+                        .setTitle("NEXUS UPDATE • ${update.version}")
+                        .setMessage(details)
+                        .setNegativeButton("Depois", null)
+                        .setPositiveButton("ATUALIZAR") { _, _ ->
+                            InAppUpdater.downloadAndInstall(this, update) { message ->
+                                updateStatusText.text = message
+                            }
+                        }
+                        .show()
+                }
+            }.onFailure { error ->
+                updateStatusText.text = error.message ?: "Não foi possível verificar atualizações."
+            }
+        }
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
@@ -226,6 +255,22 @@ class MainActivity : Activity() {
         })
         pageContainer.addView(eqPage)
         root.addView(pageContainer)
+
+        val updateCard = card().apply { setPadding(dp(16), dp(14), dp(16), dp(14)) }
+        updateCard.addView(text("NEXUS UPDATE", 12f, cyan, true))
+        updateStatusText = text("Versão ${BuildConfig.VERSION_NAME} • Atualizações automáticas", 11f, muted).apply {
+            setPadding(0, dp(6), 0, dp(10))
+        }
+        updateCard.addView(updateStatusText)
+        val checkUpdates = text("VERIFICAR ATUALIZAÇÕES", 12f, bg, true).apply {
+            gravity = Gravity.CENTER
+            background = rounded(cyan, 12)
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            setOnClickListener { checkForUpdates() }
+        }
+        updateCard.addView(checkUpdates)
+        root.addView(updateCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(22) })
+
         setContentView(scroll)
         refreshEffect()
     }
