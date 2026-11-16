@@ -11,6 +11,7 @@ export default function App() {
   const contextRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const filtersRef = useRef<BiquadFilterNode[]>([]);
+  const paramFiltersRef = useRef<BiquadFilterNode[]>([]);
   const masterRef = useRef<GainNode | null>(null);
   const [fileName, setFileName] = useState('');
   const [playing, setPlaying] = useState(false);
@@ -43,17 +44,30 @@ export default function App() {
       filter.gain.value = values[index] || 0;
       return filter;
     });
+    const paramFilters = PARAM_FREQS.map((frequency, index) => {
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'peaking';
+      filter.frequency.value = frequency;
+      filter.Q.value = 1;
+      filter.gain.value = paramValues[index] || 0;
+      return filter;
+    });
     const master = ctx.createGain();
     master.gain.value = Math.pow(10, output / 20);
     source.connect(filters[0]);
     filters.forEach((filter, index) => {
       if (index < filters.length - 1) filter.connect(filters[index + 1]);
     });
-    filters[filters.length - 1].connect(master);
+    filters[filters.length - 1].connect(paramFilters[0]);
+    paramFilters.forEach((filter, index) => {
+      if (index < paramFilters.length - 1) filter.connect(paramFilters[index + 1]);
+    });
+    paramFilters[paramFilters.length - 1].connect(master);
     master.connect(ctx.destination);
     contextRef.current = ctx;
     sourceRef.current = source;
     filtersRef.current = filters;
+    paramFiltersRef.current = paramFilters;
     masterRef.current = master;
     setReady(true);
     setMessage('Motor de áudio ativo');
@@ -64,6 +78,12 @@ export default function App() {
       filter.gain.setTargetAtTime(enabled ? values[index] : 0, contextRef.current?.currentTime ?? 0, 0.015);
     });
   }, [values, enabled]);
+
+  useEffect(() => {
+    paramFiltersRef.current.forEach((filter, index) => {
+      filter.gain.setTargetAtTime(enabled ? paramValues[index] : 0, contextRef.current?.currentTime ?? 0, 0.015);
+    });
+  }, [paramValues, enabled]);
 
   useEffect(() => {
     masterRef.current?.gain.setTargetAtTime(Math.pow(10, output / 20), contextRef.current?.currentTime ?? 0, 0.015);
