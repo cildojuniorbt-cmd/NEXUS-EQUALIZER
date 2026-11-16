@@ -72,6 +72,7 @@ targets:
     dependencies:
       - sdk: MediaDevice.framework
       - sdk: CoreAudio.framework
+      - sdk: AudioServerDriver.framework
       - sdk: AudioToolbox.framework
       - sdk: AVFoundation.framework
       - sdk: Network.framework
