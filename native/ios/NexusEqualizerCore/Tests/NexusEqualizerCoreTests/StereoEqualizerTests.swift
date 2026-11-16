@@ -23,4 +23,21 @@ final class StereoEqualizerTests: XCTestCase {
         XCTAssertEqual(samples[0], Float(pow(10, -6.0 / 20)), accuracy: 0.001)
         XCTAssertEqual(samples[1], -Float(pow(10, -6.0 / 20)), accuracy: 0.001)
     }
+
+    func testThirtyOneBandLayoutAcceptsPresets() {
+        let eq = StereoEqualizer(frequencies: GraphicEqualizer31.frequencies)
+        XCTAssertEqual(eq.bandCount, 31)
+        eq.apply(preset: .rock)
+        var samples = [Float](repeating: 0.1, count: 512)
+        eq.processInterleavedStereo(&samples)
+        XCTAssertTrue(samples.allSatisfy { $0.isFinite })
+    }
+
+    func testChangingBandDoesNotProduceNonFiniteOutput() {
+        let eq = StereoEqualizer()
+        eq.setBand(index: 4, gainDB: 18, q: 12)
+        var samples = [Float](repeating: 0.25, count: 256)
+        eq.processInterleavedStereo(&samples)
+        XCTAssertTrue(samples.allSatisfy { $0.isFinite })
+    }
 }
