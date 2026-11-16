@@ -217,4 +217,22 @@ final class StereoEqualizerTests: XCTestCase {
         ))
     }
 
+
+    func testImmediateControlUpdateCancelsPendingOutputRamp() throws {
+        let engine = try XCTUnwrap(RealtimeStereoEqualizer())
+        XCTAssertTrue(engine.setBypassedAtRenderTime(true))
+        XCTAssertTrue(engine.rampOutputGainAtRenderTime(targetGainDB: 6, durationFrames: 8))
+        XCTAssertTrue(engine.setOutputGainDB(0))
+
+        var left: [Float] = [1]
+        var right: [Float] = [1]
+        left.withUnsafeMutableBufferPointer { l in
+            right.withUnsafeMutableBufferPointer { r in
+                engine.processPlanar(left: l.baseAddress!, right: r.baseAddress!, frameCount: 1)
+            }
+        }
+        XCTAssertEqual(left[0], 1, accuracy: 0.0001)
+        XCTAssertEqual(right[0], 1, accuracy: 0.0001)
+    }
+
 }
