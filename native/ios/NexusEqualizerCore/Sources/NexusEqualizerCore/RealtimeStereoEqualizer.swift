@@ -23,7 +23,8 @@ public final class RealtimeStereoEqualizer {
 
     @discardableResult
     public func setBand(index: Int, gainDB: Double, q: Double = 1, sampleRate: Double = 48_000) -> Bool {
-        guard Self.bandFrequencies.indices.contains(index) else { return false }
+        guard Self.bandFrequencies.indices.contains(index),
+              gainDB.isFinite, q.isFinite, sampleRate.isFinite, sampleRate > 0 else { return false }
         let filter = BiquadEQ(
             frequency: Self.bandFrequencies[index],
             gainDB: min(18, max(-18, gainDB)),
@@ -40,6 +41,7 @@ public final class RealtimeStereoEqualizer {
 
     @discardableResult
     public func setOutputGainDB(_ gainDB: Double) -> Bool {
+        guard gainDB.isFinite else { return false }
         let clamped = min(6, max(-24, gainDB))
         let linear = Float(pow(10, clamped / 20))
         return nexus_eq_realtime_set_output_gain(handle, linear)
