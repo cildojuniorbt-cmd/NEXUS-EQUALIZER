@@ -5,7 +5,9 @@ import './style.css';
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register(import.meta.env.BASE_URL + 'sw.js').catch(() => undefined);
+    navigator.serviceWorker.register(import.meta.env.BASE_URL + 'sw.js', { updateViaCache: 'none' })
+      .then(registration => registration.update().catch(() => undefined))
+      .catch(() => undefined);
   });
 }
 
