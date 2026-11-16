@@ -1,0 +1,61 @@
+name: NexusEqualizer
+options:
+  bundleIdPrefix: com.nexusworks
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+packages:
+  NexusEqualizerCore:
+    path: NexusEqualizerCore
+targets:
+  NexusEqualizer:
+    type: application
+    platform: iOS
+    sources:
+      - path: StandaloneApp
+        excludes:
+          - README.md
+    dependencies:
+      - package: NexusEqualizerCore
+        product: NexusEqualizerCore
+      - target: NexusEqualizerAUv3
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nexusworks.equalizer
+        PRODUCT_NAME: NEXUS EQUALIZER
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_CFBundleDisplayName: NEXUS EQUALIZER
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic
+  NexusEqualizerAUv3:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: AudioUnitExtension
+        excludes:
+          - README.md
+          - Info-AUv3-Extension.plist
+    dependencies:
+      - package: NexusEqualizerCore
+        product: NexusEqualizerCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nexusworks.equalizer.auv3
+        PRODUCT_NAME: NEXUS Equalizer AUv3
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_FILE: AudioUnitExtension/Info-AUv3-Extension.plist
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+        CODE_SIGN_STYLE: Automatic
+schemes:
+  NexusEqualizer:
+    build:
+      targets:
+        NexusEqualizer: all
+        NexusEqualizerAUv3: all
+    run:
+      config: Debug
