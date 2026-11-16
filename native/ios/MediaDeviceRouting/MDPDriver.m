@@ -17,7 +17,7 @@
 //    'pinp' ProcessInput / 'pout' ProcessOutput / 'mixo' MixOutput /
 //    'pmix' ProcessMix / 'cmix' ConvertMix / 'rite' WriteMix
 //  各クライアントの音は MixOutput でミックスされ、**WriteMix で書き出される**。
-//  そこが Passthrough の挿入点になる。
+//  そこが NEXUS EQUALIZER の挿入点になる。
 
 #import "MDPDriver.h"
 #import <CoreAudio/AudioServerPlugIn.h>
@@ -133,7 +133,7 @@ static void FourCCStr(uint32_t v, char out[5]) {
 
 #define LOGPROP(tag, obj, addr)                                                  do {                                                                             char _s[5], _c[5];                                                           FourCCStr((addr)->mSelector, _s);                                            FourCCStr((addr)->mScope, _c);                                               os_log(gLog, "%{public}s obj=%u sel=%{public}s scope=%{public}s el=%u",                tag, (unsigned)(obj), _s, _c, (unsigned)(addr)->mElement);        } while (0)
 
-static AudioStreamBasicDescription PassthroughFormat(void) {
+static AudioStreamBasicDescription NEXUS EQUALIZERFormat(void) {
     AudioStreamBasicDescription f = {0};
     f.mSampleRate       = kSampleRate;
     f.mFormatID         = kAudioFormatLinearPCM;
@@ -451,14 +451,14 @@ static OSStatus MDP_GetPropertyData(AudioServerPlugInDriverRef d, AudioObjectID 
                 case kAudioObjectPropertyClass:     PUT(AudioClassID, kAudioDeviceClassID);
                 case kAudioObjectPropertyOwner:     PUT(AudioObjectID, kObjectID_PlugIn);
                 case kAudioObjectPropertyName:
-                    PUT(CFStringRef, (CFStringRef)CFRetain(CFSTR("Passthrough")));
+                    PUT(CFStringRef, (CFStringRef)CFRetain(CFSTR("NEXUS EQUALIZER")));
                 case kAudioObjectPropertyManufacturer:
                     PUT(CFStringRef, (CFStringRef)CFRetain(CFSTR("nemut.ai")));
                 case kAudioDevicePropertyDeviceUID:
                     PUT(CFStringRef, gDeviceUID ? (CFStringRef)CFRetain(gDeviceUID)
                                                 : (CFStringRef)CFRetain(CFSTR("")));
                 case kAudioDevicePropertyModelUID:
-                    PUT(CFStringRef, (CFStringRef)CFRetain(CFSTR("ai.nemut.mdepass.model")));
+                    PUT(CFStringRef, (CFStringRef)CFRetain(CFSTR("com.nexusworks.equalizer.model")));
                 // ヘッダの要求: RemoteStreaming か RemoteScreen でないと登録が失敗する。
                 case kAudioDevicePropertyTransportType:
                     PUT(UInt32, kAudioDeviceTransportTypeRemoteStreaming);
@@ -479,7 +479,7 @@ static OSStatus MDP_GetPropertyData(AudioServerPlugInDriverRef d, AudioObjectID 
                 // 持つ限り引き剥がされないので、**起動のタイミングで分かれる**。
                 // ループバックが 20% くらいで出る、という観測の説明になりうる。
                 //
-                // 副作用を見ること: ルートピッカーから Passthrough が消えたら戻す。
+                // 副作用を見ること: ルートピッカーから NEXUS EQUALIZER が消えたら戻す。
                 // MediaDevice のピッカーは MediaOutputDevice の広告で出るので、
                 // このプロパティとは別系統のはずだが、測っていない。
                 case kAudioDevicePropertyDeviceCanBeDefaultDevice:       PUT(UInt32, 0);
@@ -569,12 +569,12 @@ static OSStatus MDP_GetPropertyData(AudioServerPlugInDriverRef d, AudioObjectID 
                 case kAudioStreamPropertyLatency:         PUT(UInt32, 0);
                 case kAudioStreamPropertyVirtualFormat:
                 case kAudioStreamPropertyPhysicalFormat:
-                    PUT(AudioStreamBasicDescription, PassthroughFormat());
+                    PUT(AudioStreamBasicDescription, NEXUS EQUALIZERFormat());
                 case kAudioStreamPropertyAvailableVirtualFormats:
                 case kAudioStreamPropertyAvailablePhysicalFormats: {
                     if (inDataSize < sizeof(AudioStreamRangedDescription)) { *outDataSize = 0; return noErr; }
                     AudioStreamRangedDescription *r = (AudioStreamRangedDescription *)outData;
-                    r[0].mFormat = PassthroughFormat();
+                    r[0].mFormat = NEXUS EQUALIZERFormat();
                     r[0].mSampleRateRange.mMinimum = kSampleRate;
                     r[0].mSampleRateRange.mMaximum = kSampleRate;
                     *outDataSize = sizeof(AudioStreamRangedDescription);
@@ -743,9 +743,9 @@ static OSStatus MDP_DoIOOperation(AudioServerPlugInDriverRef d, AudioObjectID de
     // ここで strong なローカルに受け直すと retain/release が復活するので書き換えないこと。
     void *hp = atomic_load_explicit(&gHandlerPtr, memory_order_acquire);
     if (hp) {
-        __unsafe_unretained PassthroughSampleHandler h = (__bridge PassthroughSampleHandler)hp;
+        __unsafe_unretained NEXUS EQUALIZERSampleHandler h = (__bridge NEXUS EQUALIZERSampleHandler)hp;
         // ストリームのフォーマットはインターリーブの float32 x2。
-        // Passthrough 側が非インターリーブを期待しているので、
+        // NEXUS EQUALIZER 側が非インターリーブを期待しているので、
         // ここではインターリーブのまま1面として渡し、受け側で分ける。
         const float *interleaved = (const float *)ioMainBuffer;
         const float *planes[1] = { interleaved };
@@ -780,7 +780,7 @@ static OSStatus MDP_EndIOOperation(AudioServerPlugInDriverRef d, AudioObjectID d
     static MDPDriver *s;
     static dispatch_once_t once;
     dispatch_once(&once, ^{
-        gLog = os_log_create("ai.nemut.mdepass", "driver");
+        gLog = os_log_create("com.nexusworks.equalizer", "driver");
         s = [[MDPDriver alloc] init];
     });
     return s;
@@ -837,7 +837,7 @@ static void ETFillInterfaceOnce(void) {
 
     // ======== 2 回目以降が繋がらない理由。ここを触る前に読むこと ========
     //
-    // 症状: ルートピッカーで Passthrough → スピーカー → Passthrough と往復すると、
+    // 症状: ルートピッカーで NEXUS EQUALIZER → スピーカー → NEXUS EQUALIZER と往復すると、
     // 2 回目から "Unable to Connect"。端末を再起動すると直る。
     //
     // 分岐しているのは audiomxd の 1 行で、しかも拡張の activateDevice が呼ばれる
@@ -863,7 +863,7 @@ static void ETFillInterfaceOnce(void) {
     //
     // つまり **publish 1 回につき rstm/rstt の port が 1 組できて、二度と消えない。**
     //     02:40:01.521588 MDP publish uid=4D444550-... status=0
-    //     02:40:01.634736 Port_Remote_Aspen.cpp:87 Creating an Remote port 'rstm' for Passthrough
+    //     02:40:01.634736 Port_Remote_Aspen.cpp:87 Creating an Remote port 'rstm' for NEXUS EQUALIZER
     //     02:40:01.635348 PortManager.cpp:746 Adding port [ type: rstm; ...; conn: 1; rout: 0 ]
     // 残骸はシステム自身が数えていて、往復のたびに 2 ずつ増える:
     //     02:40:01.635372 PortManager.cpp:540 Found 2 prospective partner ports
@@ -873,7 +873,7 @@ static void ETFillInterfaceOnce(void) {
     // 12 回の良い枝には 1 行も出ない。
     //
     // deactivate が落とすのは routability だけで、接続（conn:1）は残る:
-    //     02:39:59.343636 Port.cpp:1041 Changing port routability to 0 for port ... "Passthrough"
+    //     02:39:59.343636 Port.cpp:1041 Changing port routability to 0 for port ... "NEXUS EQUALIZER"
     //
     // だから 2 回目の gate は「前回の publish が置いていった rstm」を見て待ちを飛ばす。
     // 端末の再起動で直るのは拡張プロセスが入れ替わって残骸が消えるからで、
@@ -947,14 +947,14 @@ static void ETFillInterfaceOnce(void) {
     // 隠れていたが、後片付けが途中で飛ぶうえ、いつ落ちるかが決まらない。
     //
     // 解除の口はそもそも無い。だから「登録を落とす」のではなく
-    // 「プロセスを終える」で片づける（PassthroughExtension.deactivateDevice）。
+    // 「プロセスを終える」で片づける（NEXUS EQUALIZERExtension.deactivateDevice）。
     gRegistered = false;
 
     os_log(gLog, "unpublish frames=%llu registered=%d",
            (unsigned long long)gIOCount, (int)gRegistered);
 }
 
-- (void)startCaptureWithHandler:(PassthroughSampleHandler)handler {
+- (void)startCaptureWithHandler:(NEXUS EQUALIZERSampleHandler)handler {
     // 意図的に解放しない（gHandlerPtr の宣言を読むこと）。
     void *p = (__bridge_retained void *)[handler copy];
     atomic_store_explicit(&gHandlerPtr, p, memory_order_release);
