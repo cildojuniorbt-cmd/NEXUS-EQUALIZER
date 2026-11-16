@@ -40,15 +40,10 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
         buildParameterTree()
     }
 
-    public override var factoryPresets: [AUAudioUnitPreset]? {
-        [
-            AUAudioUnitPreset(number: 0, name: "Flat"),
-            AUAudioUnitPreset(number: 1, name: "Bass Boost"),
-            AUAudioUnitPreset(number: 2, name: "Vocal"),
-            AUAudioUnitPreset(number: 3, name: "Rock"),
-            AUAudioUnitPreset(number: 4, name: "Pop")
-        ]
-    }
+    // Factory preset objects are currently omitted because the iOS 27 SDK
+    // no longer exposes the legacy AUAudioUnitPreset(number:name:) initializer.
+    // The host app continues to provide the named NEXUS presets independently.
+    public override var factoryPresets: [AUAudioUnitPreset]? { [] }
 
     public override var supportsUserPresets: Bool { true }
 
@@ -94,13 +89,17 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
         let bypass = AUParameterTree.createParameter(
             withIdentifier: "bypass", name: "Bypass", address: Address.bypass,
             min: 0, max: 1, unit: .boolean, unitName: nil,
-            flags: [.flag_IsReadable, .flag_IsWritable], value: 0
+            flags: [.flag_IsReadable, .flag_IsWritable],
+            valueStrings: nil, dependentParameters: nil
         )
+        bypass.value = 0
         let output = AUParameterTree.createParameter(
             withIdentifier: "outputGain", name: "Output Gain", address: Address.outputGain,
             min: -24, max: 6, unit: .decibels, unitName: nil,
-            flags: [.flag_IsReadable, .flag_IsWritable, .flag_CanRamp], value: 0
+            flags: [.flag_IsReadable, .flag_IsWritable, .flag_CanRamp],
+            valueStrings: nil, dependentParameters: nil
         )
+        output.value = 0
         var children = [bypass, output]
         for band in 0..<RealtimeStereoEqualizer.bandFrequencies.count {
             let frequency = Int(RealtimeStereoEqualizer.bandFrequencies[band])
@@ -108,8 +107,10 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
                 withIdentifier: "band\(band)", name: "Band \(frequency) Hz",
                 address: Address.firstBand + AUParameterAddress(band),
                 min: -18, max: 18, unit: .decibels, unitName: nil,
-                flags: [.flag_IsReadable, .flag_IsWritable, .flag_CanRamp], value: 0
+                flags: [.flag_IsReadable, .flag_IsWritable, .flag_CanRamp],
+                valueStrings: nil, dependentParameters: nil
             )
+            parameter.value = 0
             children.append(parameter)
         }
 
@@ -179,7 +180,7 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
             processor.beginRenderBlock()
             let cycleStart = AUEventSampleTime(timestamp.pointee.mSampleTime)
             var processedFrames = 0
-            var event = realtimeEventListHead
+            var event: UnsafeMutablePointer<AURenderEvent>? = realtimeEventListHead
             while let current = event {
                 let header = current.pointee.head
                 let timeDelta = header.eventSampleTime.subtractingReportingOverflow(cycleStart)
