@@ -1,45 +1,32 @@
 # NEXUS EQUALIZER
 
-A browser-based personal audio processor for Android and iPhone, built around the Web Audio API.
+NEXUS EQUALIZER is being developed as a native audio-equalizer product for Android and iOS. The original Vite/Web Audio app is retained as a browser prototype and DSP/UI reference; it is **not** a system-wide equalizer.
 
-## Current prototype
-- Load local audio files (browser-supported audio formats, including M4A where supported by the browser).
-- Real-time 31-band graphic equalizer.
-- 10-band parametric EQ with independent gain, frequency and Q controls.
-- Live FFT spectrum analyzer.
-- Dynamics compressor with threshold and ratio controls.
-- Always-on peak guard limiter.
-- Output gain, EQ bypass, playback timeline and seeking.
-- Built-in sound presets.
-- Local persistence for EQ and dynamics settings.
-- Responsive white + graphite interface.
-- PWA manifest and basic app-shell caching.
+## Native development
 
-## Publish with GitHub Pages
-1. Open repository Settings → Pages.
-2. Under Build and deployment, choose **GitHub Actions** as the source.
-3. Push to `main` or run the Deploy NEXUS EQUALIZER workflow manually.
+See [native/README.md](native/README.md) for the native workspace, architecture, build instructions, and release gates.
 
-## Run locally
-```bash
+- Android: Kotlin app with a best-effort legacy output-mix equalizer controller. Global output routing is device/OEM/OS dependent and must be verified on real hardware.
+- iOS: Swift DSP core and standalone app screen foundation, with AUv3 as the supported plugin path for compatible host applications. iOS does not expose a public API for a third-party app to equalize arbitrary audio from other apps.
+- Platform contract and QA matrix: [native/docs/PLATFORM-CAPABILITIES.md](native/docs/PLATFORM-CAPABILITIES.md).
+
+## Web prototype
+
+The repository root contains the original Vite + React + Web Audio prototype. It can process audio routed through the page itself, but cannot intercept Spotify, Apple Music, YouTube, games, or other independent apps.
+
+Run locally:
+
+```sh
 npm install
 npm run dev
-``
+```
 
-Open the local URL shown by Vite. Use HTTPS (or localhost) for browser audio and PWA capabilities.
+## Build checks
 
-## Important platform limitation
-The Web Audio API processes audio routed through this application. A web page cannot capture and equalize audio playing in unrelated apps such as Spotify, Apple Music, YouTube or games. On iPhone, Safari has additional restrictions on background playback and audio session behavior. This prototype is not a system-wide equalizer.
+- Web prototype: `npm run build`
+- Android native debug build: see [Android native workflow](.github/workflows/native-android.yml)
+- Portable iOS DSP unit tests: see [iOS DSP workflow](.github/workflows/ios-core.yml)
 
-## Audio graph
-Local media element → 31 peaking filters → 10 parametric peaking filters → optional dynamics compressor → FFT analyser → output gain → peak guard → device output.
+## Product status
 
-## Next engineering milestones
-1. Verify build and test real playback on iOS Safari and Android Chrome.
-2. Add a measured headphone response profile library and per-device tuning.
-3. Add stereo crossfeed/width tools and loudness controls.
-4. Improve offline caching, iOS home-screen icons and install experience.
-5. Evaluate AudioWorklet DSP modules for advanced processing and performance.
-
-## Status
-Early prototype. Controls are functional for audio played inside the app, but device-specific listening tests and browser compatibility checks are still required.
+Native foundations are in place, not a release-ready app yet. Android global audio behavior still requires real-device validation. The iOS AUv3 extension target, host integration, app project/signing, interface, and device testing remain required before release.
