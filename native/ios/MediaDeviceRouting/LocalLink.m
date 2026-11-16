@@ -231,6 +231,7 @@ static os_log_t MDPLinkLog(void) {
     float *_ring;
     _Atomic uint64_t _w;
     _Atomic uint64_t _r;
+    _Atomic uint64_t _receivedFrames;
     _Atomic bool _listeningFlag;
     _Atomic bool _peerFlag;
     // 受信したバイトをそのまま溜める。float に切り出すのは境界が揃ってから。
@@ -259,6 +260,7 @@ static os_log_t MDPLinkLog(void) {
 
 - (BOOL)listening { return atomic_load_explicit(&_listeningFlag, memory_order_acquire); }
 - (BOOL)hasPeer   { return atomic_load_explicit(&_peerFlag, memory_order_acquire); }
+- (uint64_t)receivedFrames { return atomic_load_explicit(&_receivedFrames, memory_order_acquire); }
 
 + (uint32_t)targetFrames { return 2048; }
 
@@ -337,7 +339,7 @@ static os_log_t MDPLinkLog(void) {
         _ring[(w + i) % RECV_RING_SAMPLES] = v;
     }
     atomic_store_explicit(&_w, w + count, memory_order_release);
-    _receivedFrames += count / 2;
+    atomic_fetch_add_explicit(&_receivedFrames, count / 2, memory_order_release);
 
     // ここで出さないと、同期ずれを伴わない非有限値（送り手側で既に壊れている音）が
     // 黙って 0 に置き換わる。consume 側の bad= は同期ずれが起きたときしか通らない。
