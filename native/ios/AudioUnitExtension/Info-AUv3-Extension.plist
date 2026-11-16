@@ -11,8 +11,6 @@
                 <dict>
                     <key>description</key>
                     <string>Ten-band stereo equalizer</string>
-                    <key>factoryFunction</key>
-                    <string></string>
                     <key>manufacturer</key>
                     <string>Nexu</string>
                     <key>name</key>
