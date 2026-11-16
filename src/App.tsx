@@ -23,6 +23,9 @@ export default function App() {
   const [tab, setTab] = useState<'graphic' | 'parametric'>('graphic');
   const [values, setValues] = useState<number[]>(FREQUENCIES.map(() => 0));
   const [paramValues, setParamValues] = useState<number[]>(PARAM_FREQS.map(() => 0));
+  const [paramFrequencies, setParamFrequencies] = useState<number[]>(PARAM_FREQS);
+  const [paramQs, setParamQs] = useState<number[]>(PARAM_FREQS.map(() => 1));
+  const objectUrlRef = useRef<string | null>(null);
   const [output, setOutput] = useState(0);
   const [compressorEnabled, setCompressorEnabled] = useState(false);
   const [threshold, setThreshold] = useState(-24);
@@ -50,11 +53,11 @@ export default function App() {
       filter.gain.value = values[index] || 0;
       return filter;
     });
-    const paramFilters = PARAM_FREQS.map((frequency, index) => {
+    const paramFilters = paramFrequencies.map((frequency, index) => {
       const filter = ctx.createBiquadFilter();
       filter.type = 'peaking';
       filter.frequency.value = frequency;
-      filter.Q.value = 1;
+      filter.Q.value = paramQs[index];
       filter.gain.value = paramValues[index] || 0;
       return filter;
     });
@@ -106,6 +109,18 @@ export default function App() {
   }, [paramValues, enabled]);
 
   useEffect(() => {
+    paramFiltersRef.current.forEach((filter, index) => {
+      filter.frequency.setTargetAtTime(paramFrequencies[index], contextRef.current?.currentTime ?? 0, 0.02);
+    });
+  }, [paramFrequencies]);
+
+  useEffect(() => {
+    paramFiltersRef.current.forEach((filter, index) => {
+      filter.Q.setTargetAtTime(paramQs[index], contextRef.current?.currentTime ?? 0, 0.02);
+    });
+  }, [paramQs]);
+
+  useEffect(() => {
     if (compressorRef.current) {
       compressorRef.current.threshold.setTargetAtTime(compressorEnabled ? threshold : 0, contextRef.current?.currentTime ?? 0, 0.02);
       compressorRef.current.ratio.setTargetAtTime(compressorEnabled ? ratio : 1, contextRef.current?.currentTime ?? 0, 0.02);
@@ -118,6 +133,7 @@ export default function App() {
 
   useEffect(() => () => {
     contextRef.current?.close();
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
   }, []);
 
   useEffect(() => {
@@ -184,7 +200,10 @@ export default function App() {
       setMessage('Selecione um arquivo de áudio válido.');
       return;
     }
-    audioRef.current.src = URL.createObjectURL(file);
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    objectUrlRef.current = URL.createObjectURL(file);
+    audioRef.current.src = objectUrlRef.current;
+    audioRef.current.load();
     setFileName(file.name);
     setPlaying(false);
     setMessage('Arquivo carregado. Pressione reproduzir.');
@@ -209,6 +228,14 @@ export default function App() {
 
   function updateParam(index: number, value: number) {
     setParamValues(current => current.map((v, i) => i === index ? value : v));
+  }
+
+  function updateParamFrequency(index: number, value: number) {
+    setParamFrequencies(current => current.map((v, i) => i === index ? value : v));
+  }
+
+  function updateParamQ(index: number, value: number) {
+    setParamQs(current => current.map((v, i) => i === index ? value : v));
   }
 
   return (
@@ -238,7 +265,7 @@ export default function App() {
       <section className="eq-card">
         <div className="section-heading"><div><p className="section-kicker">PROCESSING</p><h2>Equalizer</h2></div><button className={'power-button ' + (enabled ? 'on' : '')} onClick={() => setEnabled(v => !v)}><Power size={16}/> {enabled ? 'ON' : 'BYPASS'}</button></div>
         <div className="tabs"><button className={tab === 'graphic' ? 'selected' : ''} onClick={() => setTab('graphic')}>31-Band Graphic</button><button className={tab === 'parametric' ? 'selected' : ''} onClick={() => setTab('parametric')}>10-Band Parametric</button></div>
-        {tab === 'graphic' ? <div className="graphic-eq">{FREQUENCIES.map((frequency, index) => <div className="band" key={frequency}><span className="band-value">{values[index] > 0 ? '+' : ''}{values[index].toFixed(0)}</span><input aria-label={frequency + ' Hz gain'} type="range" min="-12" max="12" step=".5" value={values[index]} onChange={e => updateBand(index, Number(e.target.value))}/><span className="band-frequency">{frequency >= 1000 ? (frequency / 1000).toString().replace('.0','') + 'k' : frequency}</span></div>)}</div> : <div className="parametric-grid">{PARAM_FREQS.map((frequency, index) => <div className="param-band" key={frequency}><strong>{frequency >= 1000 ? frequency / 1000 + ' kHz' : frequency + ' Hz'}</strong><span>{paramValues[index] > 0 ? '+' : ''}{paramValues[index].toFixed(1)} dB</span><input type="range" min="-12" max="12" step=".5" value={paramValues[index]} onChange={e => updateParam(index, Number(e.target.value))}/><small>Q 1.0 · Peaking</small></div>)}</div>}
+        {tab === 'graphic' ? <div className="graphic-eq">{FREQUENCIES.map((frequency, index) => <div className="band" key={frequency}><span className="band-value">{values[index] > 0 ? '+' : ''}{values[index].toFixed(0)}</span><input aria-label={frequency + ' Hz gain'} type="range" min="-12" max="12" step=".5" value={values[index]} onChange={e => updateBand(index, Number(e.target.value))}/><span className="band-frequency">{frequency >= 1000 ? (frequency / 1000).toString().replace('.0','') + 'k' : frequency}</span></div>)}</div> : <div className="parametric-grid">{paramFrequencies.map((frequency, index) => <div className="param-band" key={index}><strong>BAND {index + 1} · {frequency >= 1000 ? (frequency / 1000).toFixed(2).replace(/0+$/,'').replace(/\\.$/,'') + ' kHz' : Math.round(frequency) + ' Hz'}</strong><label>GAIN <b>{paramValues[index] > 0 ? '+' : ''}{paramValues[index].toFixed(1)} dB</b><input type="range" min="-12" max="12" step=".5" value={paramValues[index]} onChange={e => updateParam(index, Number(e.target.value))}/></label><label>FREQUENCY <b>{Math.round(frequency)} Hz</b><input type="range" min="20" max="20000" step="1" value={frequency} onChange={e => updateParamFrequency(index, Number(e.target.value))}/></label><label>Q / WIDTH <b>{paramQs[index].toFixed(2)}</b><input type="range" min="0.3" max="8" step=".05" value={paramQs[index]} onChange={e => updateParamQ(index, Number(e.target.value))}/></label><small>PEAKING FILTER</small></div>)}</div>}
         <div className="eq-footer"><label>PREAMP / OUTPUT <strong>{output > 0 ? '+' : ''}{output.toFixed(1)} dB</strong></label><input type="range" min="-12" max="6" step=".5" value={output} onChange={e => setOutput(Number(e.target.value))}/><button className="reset-button" onClick={() => { applyPreset('Flat'); setOutput(0); }}><RotateCcw size={14}/> Reset EQ</button></div>
       </section>
 
