@@ -21,7 +21,11 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         buildUi()
-        refreshEffect()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::statusText.isInitialized) refreshEffect()
     }
 
     private fun buildUi() {
