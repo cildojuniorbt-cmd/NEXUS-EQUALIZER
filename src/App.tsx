@@ -15,6 +15,8 @@ export default function App() {
   const masterRef = useRef<GainNode | null>(null);
   const compressorRef = useRef<DynamicsCompressorNode | null>(null);
   const limiterRef = useRef<DynamicsCompressorNode | null>(null);
+  const highPassRef = useRef<BiquadFilterNode | null>(null);
+  const lowPassRef = useRef<BiquadFilterNode | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [fileName, setFileName] = useState('');
@@ -31,6 +33,10 @@ export default function App() {
   const objectUrlRef = useRef<string | null>(null);
   const [output, setOutput] = useState(0);
   const [compressorEnabled, setCompressorEnabled] = useState(false);
+  const [highPassEnabled, setHighPassEnabled] = useState(false);
+  const [lowPassEnabled, setLowPassEnabled] = useState(false);
+  const [highPassFrequency, setHighPassFrequency] = useState(35);
+  const [lowPassFrequency, setLowPassFrequency] = useState(18000);
   const [threshold, setThreshold] = useState(-24);
   const [ratio, setRatio] = useState(3);
   const [preset, setPreset] = useState<Preset>('Flat');
@@ -49,6 +55,14 @@ export default function App() {
     }
     const ctx = new Ctx();
     const source = ctx.createMediaElementSource(audio);
+    const highPass = ctx.createBiquadFilter();
+    highPass.type = highPassEnabled ? 'highpass' : 'allpass';
+    highPass.frequency.value = highPassFrequency;
+    highPass.Q.value = 0.707;
+    const lowPass = ctx.createBiquadFilter();
+    lowPass.type = lowPassEnabled ? 'lowpass' : 'allpass';
+    lowPass.frequency.value = lowPassFrequency;
+    lowPass.Q.value = 0.707;
     const filters = FREQUENCIES.map((frequency, index) => {
       const filter = ctx.createBiquadFilter();
       filter.type = 'peaking';
@@ -82,7 +96,9 @@ export default function App() {
     analyser.smoothingTimeConstant = 0.82;
     const master = ctx.createGain();
     master.gain.value = Math.pow(10, output / 20);
-    source.connect(filters[0]);
+    source.connect(highPass);
+    highPass.connect(lowPass);
+    lowPass.connect(filters[0]);
     filters.forEach((filter, index) => {
       if (index < filters.length - 1) filter.connect(filters[index + 1]);
     });
@@ -102,6 +118,8 @@ export default function App() {
     masterRef.current = master;
     compressorRef.current = compressor;
     limiterRef.current = limiter;
+    highPassRef.current = highPass;
+    lowPassRef.current = lowPass;
     analyserRef.current = analyser;
     setReady(true);
     setMessage('Motor de áudio ativo');
@@ -117,6 +135,10 @@ export default function App() {
         if (Array.isArray(data.paramFrequencies) && data.paramFrequencies.length === PARAM_FREQS.length) setParamFrequencies(data.paramFrequencies as number[]);
         if (Array.isArray(data.paramQs) && data.paramQs.length === PARAM_FREQS.length) setParamQs(data.paramQs as number[]);
         if (typeof data.output === 'number') setOutput(data.output);
+        if (typeof data.highPassEnabled === 'boolean') setHighPassEnabled(data.highPassEnabled);
+        if (typeof data.lowPassEnabled === 'boolean') setLowPassEnabled(data.lowPassEnabled);
+        if (typeof data.highPassFrequency === 'number') setHighPassFrequency(data.highPassFrequency);
+        if (typeof data.lowPassFrequency === 'number') setLowPassFrequency(data.lowPassFrequency);
         if (typeof data.threshold === 'number') setThreshold(data.threshold);
         if (typeof data.ratio === 'number') setRatio(data.ratio);
         if (typeof data.enabled === 'boolean') setEnabled(data.enabled);
@@ -133,12 +155,12 @@ export default function App() {
     if (!settingsLoaded) return;
     try {
       localStorage.setItem('nexus-equalizer-settings-v1', JSON.stringify({
-        values, paramValues, paramFrequencies, paramQs, output, threshold, ratio, enabled, compressorEnabled, preset
+        values, paramValues, paramFrequencies, paramQs, output, threshold, ratio, enabled, compressorEnabled, highPassEnabled, lowPassEnabled, highPassFrequency, lowPassFrequency, preset
       }));
     } catch {
       // Audio processing remains available when storage is unavailable.
     }
-  }, [settingsLoaded, values, paramValues, paramFrequencies, paramQs, output, threshold, ratio, enabled, compressorEnabled, preset]);
+  }, [settingsLoaded, values, paramValues, paramFrequencies, paramQs, output, threshold, ratio, enabled, compressorEnabled, highPassEnabled, lowPassEnabled, highPassFrequency, lowPassFrequency, preset]);
 
   useEffect(() => {
     filtersRef.current.forEach((filter, index) => {
@@ -151,6 +173,17 @@ export default function App() {
       filter.gain.setTargetAtTime(enabled && tab === 'parametric' ? paramValues[index] : 0, contextRef.current?.currentTime ?? 0, 0.015);
     });
   }, [paramValues, enabled, tab]);
+
+  useEffect(() => {
+    if (highPassRef.current) {
+      highPassRef.current.type = highPassEnabled ? 'highpass' : 'allpass';
+      highPassRef.current.frequency.setTargetAtTime(highPassFrequency, contextRef.current?.currentTime ?? 0, 0.02);
+    }
+    if (lowPassRef.current) {
+      lowPassRef.current.type = lowPassEnabled ? 'lowpass' : 'allpass';
+      lowPassRef.current.frequency.setTargetAtTime(lowPassFrequency, contextRef.current?.currentTime ?? 0, 0.02);
+    }
+  }, [highPassEnabled, lowPassEnabled, highPassFrequency, lowPassFrequency]);
 
   useEffect(() => {
     paramFiltersRef.current.forEach((filter, index) => {
