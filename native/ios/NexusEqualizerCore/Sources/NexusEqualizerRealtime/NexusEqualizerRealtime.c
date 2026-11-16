@@ -224,6 +224,14 @@ void nexus_eq_realtime_render_begin_block(NexusEQRealtime *eq) {
     if (eq) consume_commands(eq);
 }
 
+
+void nexus_eq_realtime_render_planar(
+    NexusEQRealtime *eq, float *left, float *right, size_t frame_count) {
+    if (!eq || !left) return;
+    consume_commands(eq);
+    nexus_eq_realtime_render_planar_segment(eq, left, right, frame_count);
+}
+
 void nexus_eq_realtime_render_planar_segment(
     NexusEQRealtime *eq, float *left, float *right, size_t frame_count) {
     if (!eq || !left) return;
