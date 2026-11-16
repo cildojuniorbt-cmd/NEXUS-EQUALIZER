@@ -64,6 +64,11 @@ class MainActivity : Activity() {
             window.isStatusBarContrastEnforced = false
         }
         buildUi()
+        val lastCheck = preferences.getLong("last_update_check", 0L)
+        if (System.currentTimeMillis() - lastCheck > 24L * 60L * 60L * 1000L) {
+            preferences.edit().putLong("last_update_check", System.currentTimeMillis()).apply()
+            checkForUpdates(silent = true)
+        }
     }
 
     override fun onResume() {
@@ -72,7 +77,7 @@ class MainActivity : Activity() {
     }
 
 
-    private fun checkForUpdates() {
+    private fun checkForUpdates(silent: Boolean = false) {
         updateStatusText.text = "Consultando servidor de atualizações…"
         InAppUpdater.check(this) { result ->
             result.onSuccess { update ->
@@ -93,7 +98,7 @@ class MainActivity : Activity() {
                         .show()
                 }
             }.onFailure { error ->
-                updateStatusText.text = error.message ?: "Não foi possível verificar atualizações."
+                if (!silent) updateStatusText.text = error.message ?: "Não foi possível verificar atualizações."
             }
         }
     }
