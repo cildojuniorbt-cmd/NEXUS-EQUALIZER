@@ -196,8 +196,12 @@ void nexus_eq_realtime_render(NexusEQRealtime *eq, float *samples, size_t sample
     consume_commands(eq);
 
     if (eq->bypassed) {
-        if (eq->output_gain != 1.0f)
-            for (size_t i = 0; i < sample_count; ++i) samples[i] *= eq->output_gain;
+        const size_t bypass_frames = sample_count / 2u;
+        for (size_t frame = 0; frame < bypass_frames; ++frame) {
+            advance_ramps(eq);
+            samples[frame * 2u] *= eq->output_gain;
+            samples[frame * 2u + 1u] *= eq->output_gain;
+        }
         return;
     }
 
@@ -221,11 +225,10 @@ void nexus_eq_realtime_render_planar(
     if (!eq || !left) return;
     consume_commands(eq);
     if (eq->bypassed) {
-        if (eq->output_gain != 1.0f) {
-            for (size_t frame = 0; frame < frame_count; ++frame) {
-                left[frame] *= eq->output_gain;
-                if (right) right[frame] *= eq->output_gain;
-            }
+        for (size_t frame = 0; frame < frame_count; ++frame) {
+            advance_ramps(eq);
+            left[frame] *= eq->output_gain;
+            if (right) right[frame] *= eq->output_gain;
         }
         return;
     }
