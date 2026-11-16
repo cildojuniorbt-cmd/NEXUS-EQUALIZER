@@ -25,7 +25,7 @@ import os
 private final class RenderState {
     /// 1 回のコールバックで扱えるフレーム数の上限。
     let capacity: Int
-    /// 出力のレート。48000 とは限らない（機器側が決める）。
+    /// PCM リンクと DSP の固定レート。AVAudioEngine が物理出力へ変換する。
     let sampleRate: Double
 
     /// リンクから受けるインターリーブ（capacity * 2）。
@@ -227,26 +227,24 @@ final class AudioIO: ObservableObject {
         }
 
         let sr = session.sampleRate > 0 ? session.sampleRate : 48000
-        // リンクは 48kHz 固定（LocalLink.h / MDPDriver.m の kSampleRate）。
-        // setPreferredSampleRate は要求でしかなく、.mixWithOthers なので
-        // 先に鳴らしているアプリがハードウェアのレートを握っていれば通らない。
-        // 通らないまま流すと音程と速さがずれ、受信の輪も溜まるか枯れるかする。
-        // 止めると打つ手が無くなるので鳴らすが、黙って進めない。
-        let rateOK = abs(sr - 48000) < 1
+        // リンクと DSP は 48kHz 固定。AVAudioEngine の mixer が、
+        // source node の 48kHz PCM を現在の物理出力レートへ変換する。
+        // .mixWithOthers では先に鳴っているアプリがハードウェアのレートを
+        // 決めることがあるため、ここで sr に合わせて PCM を誤解釈しない。
 
         guard let equalizer else {
             status = "NEXUS DSP could not be initialized"
             return
         }
         for (index, gain) in bandGainsDB.enumerated() {
-            _ = equalizer.setBand(index: index, gainDB: gain, sampleRate: sr)
+            _ = equalizer.setBand(index: index, gainDB: gain, sampleRate: 48000)
         }
-        let state = RenderState(capacity: Self.capacity, sampleRate: sr, equalizer: equalizer)
+        let state = RenderState(capacity: Self.capacity, sampleRate: 48000, equalizer: equalizer)
         render = state
 
         // **standardFormat は非インターリーブ（プレーナ）。**
         // これが出力側の約束になる。
-        let fmt = AVAudioFormat(standardFormatWithSampleRate: sr, channels: 2)!
+        let fmt = AVAudioFormat(standardFormatWithSampleRate: 48000, channels: 2)!
 
         let src = AVAudioSourceNode { _, _, frameCount, ablPtr -> OSStatus in
             let abl = UnsafeMutableAudioBufferListPointer(ablPtr)
@@ -326,8 +324,7 @@ final class AudioIO: ObservableObject {
         running = true
         interrupted = false
         sampleRate = sr
-        status = rateOK ? "Running"
-                        : String(format: "Running at %.0f Hz, the link is fixed at 48000 Hz", sr)
+        status = "Running"
         refreshRoute()
         log.notice("start sr=\(sr) route=\(self.route, privacy: .public)")
     }
@@ -336,7 +333,7 @@ final class AudioIO: ObservableObject {
     func setBandGain(index: Int, gainDB: Double) {
         guard bandGainsDB.indices.contains(index) else { return }
         bandGainsDB[index] = gainDB
-        _ = equalizer?.setBand(index: index, gainDB: gainDB, sampleRate: sampleRate)
+        _ = equalizer?.setBand(index: index, gainDB: gainDB, sampleRate: 48000)
     }
 
     func setOutputGain(gainDB: Double) {
