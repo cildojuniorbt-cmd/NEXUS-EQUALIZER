@@ -67,6 +67,46 @@ public final class RealtimeStereoEqualizer {
         return setRenderCoefficients(filter.coefficients(), band: index)
     }
 
+
+    /// Starts a sample-by-sample coefficient ramp from the render thread.
+    @discardableResult
+    public func rampBandAtRenderTime(
+        index: Int, targetGainDB: Double, sampleRate: Double, durationFrames: UInt32
+    ) -> Bool {
+        guard Self.bandFrequencies.indices.contains(index),
+              targetGainDB.isFinite, sampleRate.isFinite, sampleRate > 0,
+              durationFrames > 0 else { return false }
+        let filter = BiquadEQ(
+            frequency: Self.bandFrequencies[index],
+            gainDB: min(18, max(-18, targetGainDB)),
+            sampleRate: sampleRate
+        )
+        return rampRenderCoefficients(filter.coefficients(), band: index, durationFrames: durationFrames)
+    }
+
+    /// Starts a sample-by-sample output gain ramp from the render thread.
+    @discardableResult
+    public func rampOutputGainAtRenderTime(targetGainDB: Double, durationFrames: UInt32) -> Bool {
+        guard targetGainDB.isFinite, durationFrames > 0 else { return false }
+        let clamped = min(6, max(-24, targetGainDB))
+        let linear = Float(pow(10, clamped / 20))
+        return nexus_eq_realtime_render_ramp_output_gain(handle, linear, durationFrames)
+    }
+
+    private func rampRenderCoefficients(
+        _ coefficients: BiquadCoefficients, band: Int, durationFrames: UInt32
+    ) -> Bool {
+        guard coefficients.b0.isFinite, coefficients.b1.isFinite,
+              coefficients.b2.isFinite, coefficients.a1.isFinite,
+              coefficients.a2.isFinite else { return false }
+        let c = NexusEQBiquadCoefficients(
+            b0: Float(coefficients.b0), b1: Float(coefficients.b1),
+            b2: Float(coefficients.b2), a1: Float(coefficients.a1),
+            a2: Float(coefficients.a2)
+        )
+        return nexus_eq_realtime_render_ramp_coefficients(handle, band, c, durationFrames)
+    }
+
     @discardableResult
     public func setBypassedAtRenderTime(_ bypassed: Bool) -> Bool {
         nexus_eq_realtime_render_set_bypass(handle, bypassed)
