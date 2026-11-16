@@ -18,5 +18,5 @@ A third-party iOS app cannot globally intercept or process audio rendered by unr
 
 ## Acceptance tests
 - Android: test Spotify, YouTube, browser playback, local media, wired headphones, Bluetooth, speaker, background playback, process restart, and at least two OEM families. Record exact model/OS and whether the sound changes.
-- iOS: verify extension appears in AUv3-capable hosts, process stereo audio, automate parameters, preserve bypass, and measure latency. Separately verify NEXUS standalone processing.
+- iOS: verify extension appears in AUv3-capable hosts, process mono/stereo audio, test sample-offset immediate parameter events, validate parameter-ramp automation (still pending in this implementation), preserve bypass, and measure latency. Separately verify NEXUS standalone processing.
 - All platforms: bypass is bit-transparent within practical DSP tolerances; no clipping at supported settings; settings persist; UI never claims unsupported routing.
