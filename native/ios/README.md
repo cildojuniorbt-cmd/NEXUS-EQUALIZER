@@ -27,7 +27,7 @@ Open `NexusEqualizer.xcodeproj` in Xcode to select a simulator, configure signin
 
 ## Current functional boundary
 
-The SwiftUI controls now call the NEXUS DSP through the app-side AVAudioEngine return path. The iOS 27 Media Device Extension, Audio Server Plug-In, local PCM bridge, and XcodeGen target have been added. This is an implementation scaffold, not a validated release: Xcode 27 compilation, entitlement provisioning/signing, installation, and physical-iPhone routing tests are still required.
+The SwiftUI controls now call the NEXUS DSP through the app-side AVAudioEngine return path. The screen polls the extension bridge, and EQ coefficients are recalculated for the active output sample rate. The iOS 27 Media Device Extension, Audio Server Plug-In, local PCM bridge, and XcodeGen target have been added. This is an implementation scaffold, not a validated release: Xcode 27 compilation, entitlement provisioning/signing, installation, and physical-iPhone routing tests are still required.
 
 The Media Device route is intended to process eligible audio from other apps when NEXUS is selected in Control Center. AUv3 remains a separate plugin path for compatible hosts. Source-app compatibility and stable playback still require physical-device validation.
 
