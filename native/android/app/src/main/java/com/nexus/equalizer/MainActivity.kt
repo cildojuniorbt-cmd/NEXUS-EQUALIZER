@@ -7,6 +7,7 @@ import android.widget.LinearLayout
 import android.widget.HorizontalScrollView
 import android.widget.SeekBar
 import android.widget.Switch
+import android.widget.ScrollView
 import android.widget.TextView
 import java.util.Locale
 
@@ -86,7 +87,10 @@ class MainActivity : Activity() {
             addView(presetsContainer)
         })
         root.addView(bandsContainer)
-        setContentView(root)
+        setContentView(ScrollView(this).apply {
+            isFillViewport = true
+            addView(root)
+        })
     }
 
     private fun refreshEffect() {
@@ -95,6 +99,15 @@ class MainActivity : Activity() {
         bandsContainer.removeAllViews()
         presetsContainer.removeAllViews()
         val available = status.state == SystemEqualizerController.State.AVAILABLE_AND_CONTROLLED
+        val savedPreset = preferences.getString("preset", null)
+            ?.let { name -> EqPreset.values().firstOrNull { it.name == name } }
+        if (available && savedPreset != null) {
+            for (index in 0 until status.bandCount) {
+                val frequency = equalizer.centerFrequencyHz(index) ?: continue
+                val gainMb = (EqPreset.gainAt(savedPreset, frequency.toDouble()) * 100.0).toInt()
+                equalizer.setBandLevel(index, gainMb)
+            }
+        }
         enableSwitch.setOnCheckedChangeListener(null)
         enableSwitch.isEnabled = available
         enableSwitch.isChecked = available && preferences.getBoolean("enabled", status.enabled)
@@ -123,7 +136,8 @@ class MainActivity : Activity() {
                 text = preset.title
                 textSize = 13f
                 setTextColor(0xFF11151B.toInt())
-                setBackgroundColor(0xFF5DE1E6.toInt())
+                val selected = preferences.getString("preset", null) == preset.name
+                setBackgroundColor(if (selected) 0xFF5DE1E6.toInt() else 0xFF27313D.toInt())
                 setPadding(18, 12, 18, 12)
                 setOnClickListener { applyPreset(preset, status.bandCount) }
             }
@@ -146,8 +160,11 @@ class MainActivity : Activity() {
                 progress = (equalizer.bandLevel(index) ?: 0) - status.minLevelMb
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                        if (fromUser && !equalizer.setBandLevel(index, progress + status.minLevelMb)) {
-                            statusText.text = "Não foi possível alterar a banda. O controle pode ter sido transferido."
+                        if (fromUser) {
+                            preferences.edit().putString("preset", "CUSTOM").apply()
+                            if (!equalizer.setBandLevel(index, progress + status.minLevelMb)) {
+                                statusText.text = "Não foi possível alterar a banda. O controle pode ter sido transferido."
+                            }
                         }
                     }
                     override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
