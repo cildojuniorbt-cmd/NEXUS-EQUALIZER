@@ -11,3 +11,7 @@
 .param-band label{gap:5px}
 .param-band{gap:12px}
 @media(max-width:700px){.spectrum-canvas{height:76px}.dynamics-grid{grid-template-columns:1fr}}
+
+.timeline{display:flex;align-items:center;gap:10px;margin-top:12px;color:#858b93;font:10px 'DM Mono',monospace}
+.timeline input{flex:1;min-width:0;accent-color:#343a42}
+.timeline input:disabled{opacity:.35}
