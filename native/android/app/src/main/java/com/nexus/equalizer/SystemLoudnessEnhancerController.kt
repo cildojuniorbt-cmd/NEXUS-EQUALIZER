@@ -28,7 +28,7 @@ class SystemLoudnessEnhancerController {
                     true,
                     "Level Boost disponível. O resultado em outros apps depende da rota do aparelho.",
                     candidate.enabled,
-                    candidate.targetGain.coerceIn(0, 1000)
+                    candidate.targetGain.coerceIn(0f, 1000f).toInt()
                 )
             }
         } catch (error: Exception) {
