@@ -1,6 +1,7 @@
 #include "NexusEqualizerRealtime.h"
 #include <stdatomic.h>
 #include <stdint.h>
+#include <math.h>
 #include <stdlib.h>
 
 #define QUEUE_CAPACITY 256u
@@ -59,6 +60,9 @@ void nexus_eq_realtime_destroy(NexusEQRealtime *eq) { free(eq); }
 bool nexus_eq_realtime_set_coefficients(
     NexusEQRealtime *eq, size_t band, NexusEQBiquadCoefficients coefficients) {
     if (band >= NEXUS_EQ_BAND_COUNT) return false;
+    if (!isfinite(coefficients.b0) || !isfinite(coefficients.b1) ||
+        !isfinite(coefficients.b2) || !isfinite(coefficients.a1) ||
+        !isfinite(coefficients.a2)) return false;
     Command command = { .type = COMMAND_COEFFICIENTS, .band = (uint32_t)band };
     command.value.coefficients = coefficients;
     return enqueue(eq, command);
@@ -71,8 +75,8 @@ bool nexus_eq_realtime_set_bypass(NexusEQRealtime *eq, bool bypassed) {
 }
 
 bool nexus_eq_realtime_set_output_gain(NexusEQRealtime *eq, float linear_gain) {
-    // Reject negative, NaN, and infinite values before they reach the render thread.
-    if (!(linear_gain >= 0.0f) || linear_gain > 64.0f) linear_gain = 0.0f;
+    // Reject negative, non-finite, and unreasonable values before they reach the render thread.
+    if (!isfinite(linear_gain) || linear_gain < 0.0f || linear_gain > 64.0f) return false;
     Command command = { .type = COMMAND_OUTPUT_GAIN };
     command.value.output_gain = linear_gain;
     return enqueue(eq, command);
