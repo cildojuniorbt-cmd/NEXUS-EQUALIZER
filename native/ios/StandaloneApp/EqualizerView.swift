@@ -8,6 +8,7 @@ struct EqualizerView: View {
     @State private var gains = Array(repeating: 0.0, count: 10)
     @State private var outputGain = 0.0
     @State private var isBypassed = false
+    @StateObject private var audioIO = AudioIO.shared
 
     private let frequencies = StereoEqualizer.defaultFrequencies
 
@@ -47,10 +48,10 @@ struct EqualizerView: View {
 
     private var statusPanel: some View {
         HStack(spacing: 12) {
-            Circle().fill(Color.orange).frame(width: 8, height: 8)
+            Circle().fill(audioIO.running ? Color.green : Color.orange).frame(width: 8, height: 8)
             VStack(alignment: .leading, spacing: 3) {
                 Text("MODO DE CONTROLE").font(.system(size: 10, weight: .bold)).tracking(1.5).foregroundStyle(.white.opacity(0.5))
-                Text("Interface pronta para integração de áudio").font(.system(size: 13, weight: .medium)).foregroundStyle(.white)
+                Text(audioIO.status).font(.system(size: 13, weight: .medium)).foregroundStyle(.white).lineLimit(2)
             }
             Spacer()
             Text("iOS").font(.caption.bold()).foregroundStyle(.cyan)
@@ -67,6 +68,7 @@ struct EqualizerView: View {
                     Button {
                         selectedPreset = preset
                         gains = preset.tenBandGainsDB
+                        for (index, gain) in gains.enumerated() { audioIO.setBandGain(index: index, gainDB: gain) }
                     } label: {
                         Text(preset.rawValue)
                             .font(.system(size: 12, weight: .semibold))
@@ -86,7 +88,7 @@ struct EqualizerView: View {
             HStack {
                 sectionTitle("EQUALIZADOR", detail: "10 bandas paramétricas")
                 Spacer()
-                Button(isBypassed ? "ATIVAR" : "BYPASS") { isBypassed.toggle() }
+                Button(isBypassed ? "ATIVAR" : "BYPASS") { isBypassed.toggle(); audioIO.setBypassed(isBypassed) }
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(isBypassed ? .black : .cyan)
                     .padding(.horizontal, 11).padding(.vertical, 8)
@@ -103,6 +105,7 @@ struct EqualizerView: View {
                             set: { value in
                                 gains[index] = value
                                 selectedPreset = .custom
+                                audioIO.setBandGain(index: index, gainDB: value)
                             }
                         ), in: -18...18, step: 0.5)
                         .rotationEffect(.degrees(-90))
@@ -130,7 +133,7 @@ struct EqualizerView: View {
             sectionTitle("SAÍDA", detail: "Nível mestre")
             HStack {
                 Image(systemName: "speaker.wave.2.fill").foregroundStyle(.cyan)
-                Slider(value: $outputGain, in: -24...6, step: 0.5).tint(.cyan)
+                Slider(value: Binding(get: { outputGain }, set: { outputGain = $0; audioIO.setOutputGain(gainDB: $0) }), in: -24...6, step: 0.5).tint(.cyan)
                 Text(String(format: "%+.1f dB", outputGain))
                     .font(.system(size: 11, design: .monospaced)).foregroundStyle(.white)
                     .frame(width: 62, alignment: .trailing)
@@ -144,7 +147,7 @@ struct EqualizerView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("IMPORTANTE SOBRE O iOS", systemImage: "info.circle.fill")
                 .font(.system(size: 11, weight: .bold)).foregroundStyle(.cyan)
-            Text("O iPhone não permite que um aplicativo equalize universalmente o áudio de Spotify, YouTube ou outros apps. O processamento será usado no próprio NEXUS ou como plugin AUv3 em hosts compatíveis.")
+            Text("No iOS 27, selecione NEXUS EQUALIZER no seletor de saída do Control Center. O sistema poderá encaminhar áudio compatível de outros apps para processamento. Alguns apps e modos de vídeo podem interromper a rota.")
                 .font(.system(size: 12)).foregroundStyle(.white.opacity(0.65)).fixedSize(horizontal: false, vertical: true)
         }
         .padding(15)
@@ -155,7 +158,7 @@ struct EqualizerView: View {
         HStack {
             Text("NEXUS WORKS DIGITAL").font(.system(size: 9, weight: .bold)).tracking(2).foregroundStyle(.white.opacity(0.3))
             Spacer()
-            Text("DESIGN PREVIEW").font(.system(size: 9, weight: .bold)).tracking(1).foregroundStyle(.orange.opacity(0.8))
+            Text("iOS 27 SYSTEM AUDIO").font(.system(size: 9, weight: .bold)).tracking(1).foregroundStyle(.cyan.opacity(0.8))
         }
     }
 
