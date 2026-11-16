@@ -18,7 +18,7 @@
 static os_log_t MDPLinkLog(void) {
     static os_log_t l;
     static dispatch_once_t once;
-    dispatch_once(&once, ^{ l = os_log_create("ai.nemut.mdepass", "link"); });
+    dispatch_once(&once, ^{ l = os_log_create("com.nexusworks.equalizer", "link"); });
     return l;
 }
 
@@ -70,7 +70,7 @@ static os_log_t MDPLinkLog(void) {
 - (instancetype)init {
     if ((self = [super init])) {
         _fd = -1;
-        _q = dispatch_queue_create("ai.nemut.mdepass.link.send", DISPATCH_QUEUE_SERIAL);
+        _q = dispatch_queue_create("com.nexusworks.equalizer.link.send", DISPATCH_QUEUE_SERIAL);
         _ring = calloc(SEND_RING_SAMPLES, sizeof(float));
         // malloc 由来なので先頭は 16 バイト境界。ヘッダ 12 の直後の float 配列も 4 で揃う。
         _txBuf = calloc(1, MDP_LINK_CHUNK_BYTES);
@@ -248,7 +248,7 @@ static os_log_t MDPLinkLog(void) {
     if ((self = [super init])) {
         _listenFd = -1;
         _peerFd = -1;
-        _q = dispatch_queue_create("ai.nemut.mdepass.link.recv", DISPATCH_QUEUE_SERIAL);
+        _q = dispatch_queue_create("com.nexusworks.equalizer.link.recv", DISPATCH_QUEUE_SERIAL);
         _ring = calloc(RECV_RING_SAMPLES, sizeof(float));
         _rxBuf = calloc(1, RX_BUF_BYTES);
     }
