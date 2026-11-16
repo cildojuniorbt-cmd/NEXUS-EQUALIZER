@@ -84,10 +84,8 @@ static inline float process_one(float input, const NexusEQBiquadCoefficients *c,
     return output;
 }
 
-void nexus_eq_realtime_render(NexusEQRealtime *eq, float *samples, size_t sample_count) {
-    if (!eq || !samples) return;
 
-    /* Drain a bounded snapshot of queued commands. No waiting or retry loop. */
+static void consume_commands(NexusEQRealtime *eq) {
     uint32_t tail = atomic_load_explicit(&eq->tail, memory_order_relaxed);
     const uint32_t head = atomic_load_explicit(&eq->head, memory_order_acquire);
     while (tail != head) {
@@ -103,6 +101,12 @@ void nexus_eq_realtime_render(NexusEQRealtime *eq, float *samples, size_t sample
         tail = (tail + 1u) % QUEUE_CAPACITY;
     }
     atomic_store_explicit(&eq->tail, tail, memory_order_release);
+}
+
+void nexus_eq_realtime_render(NexusEQRealtime *eq, float *samples, size_t sample_count) {
+    if (!eq || !samples) return;
+
+    consume_commands(eq);
 
     if (eq->bypassed) {
         if (eq->output_gain != 1.0f)
@@ -120,5 +124,31 @@ void nexus_eq_realtime_render(NexusEQRealtime *eq, float *samples, size_t sample
         }
         samples[frame * 2u] = left * eq->output_gain;
         samples[frame * 2u + 1u] = right * eq->output_gain;
+    }
+}
+
+
+void nexus_eq_realtime_render_planar(
+    NexusEQRealtime *eq, float *left, float *right, size_t frame_count) {
+    if (!eq || !left) return;
+    consume_commands(eq);
+    if (eq->bypassed) {
+        if (eq->output_gain != 1.0f) {
+            for (size_t frame = 0; frame < frame_count; ++frame) {
+                left[frame] *= eq->output_gain;
+                if (right) right[frame] *= eq->output_gain;
+            }
+        }
+        return;
+    }
+    for (size_t frame = 0; frame < frame_count; ++frame) {
+        float l = left[frame];
+        float r = right ? right[frame] : 0.0f;
+        for (size_t band = 0; band < NEXUS_EQ_BAND_COUNT; ++band) {
+            l = process_one(l, &eq->coefficients[band], &eq->left[band]);
+            if (right) r = process_one(r, &eq->coefficients[band], &eq->right[band]);
+        }
+        left[frame] = l * eq->output_gain;
+        if (right) right[frame] = r * eq->output_gain;
     }
 }
