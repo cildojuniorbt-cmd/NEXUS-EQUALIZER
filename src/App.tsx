@@ -45,7 +45,7 @@ export default function App() {
       registration?.installing?.addEventListener('statechange', inspectRegistration);
     };
 
-    navigator.serviceWorker.getRegistration().then(current => {
+    navigator.serviceWorker.ready.then(current => {
       if (disposed || !current) return;
       registration = current;
       inspectRegistration();
