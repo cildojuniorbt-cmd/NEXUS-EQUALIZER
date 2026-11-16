@@ -1,0 +1,35 @@
+name: iOS AUv3 source validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'native/ios/AudioUnitExtension/**'
+      - 'native/ios/NexusEqualizerCore/**'
+      - '.github/workflows/ios-auv3-typecheck.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'native/ios/AudioUnitExtension/**'
+      - 'native/ios/NexusEqualizerCore/**'
+      - '.github/workflows/ios-auv3-typecheck.yml'
+  workflow_dispatch:
+
+jobs:
+  typecheck-auv3:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build DSP package for iOS
+        working-directory: native/ios/NexusEqualizerCore
+        run: swift build --triple arm64-apple-ios15.0 --build-path .build-ios
+      - name: Type-check AUv3 extension against iOS SDK
+        working-directory: native/ios/NexusEqualizerCore
+        run: |
+          SDK_PATH="$(xcrun --sdk iphoneos --show-sdk-path)"
+          swiftc -typecheck \
+            -target arm64-apple-ios15.0 \
+            -sdk "$SDK_PATH" \
+            -I .build-ios/arm64-apple-ios/debug/Modules \
+            ../AudioUnitExtension/NexusEqualizerAudioUnit.swift \
+            ../AudioUnitExtension/NexusEqualizerAudioUnitFactory.swift
