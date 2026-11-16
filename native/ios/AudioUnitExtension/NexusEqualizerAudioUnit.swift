@@ -197,7 +197,7 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
                     let parameterEvent = current.pointee.parameter
                     switch header.eventType {
                     case .parameter:
-                        Self.applyScheduledParameter(
+                        Self.Self.applyScheduledParameter(
                             processor: processor,
                             address: parameterEvent.parameterAddress,
                             value: parameterEvent.value,
