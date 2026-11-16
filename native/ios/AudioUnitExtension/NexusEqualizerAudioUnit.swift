@@ -99,7 +99,7 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
         let output = AUParameterTree.createParameter(
             withIdentifier: "outputGain", name: "Output Gain", address: Address.outputGain,
             min: -24, max: 6, unit: .decibels, unitName: nil,
-            flags: [.flag_IsReadable, .flag_IsWritable], value: 0
+            flags: [.flag_IsReadable, .flag_IsWritable, .flag_CanRamp], value: 0
         )
         var children = [bypass, output]
         for band in 0..<RealtimeStereoEqualizer.bandFrequencies.count {
@@ -108,7 +108,7 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
                 withIdentifier: "band\(band)", name: "Band \(frequency) Hz",
                 address: Address.firstBand + AUParameterAddress(band),
                 min: -18, max: 18, unit: .decibels, unitName: nil,
-                flags: [.flag_IsReadable, .flag_IsWritable], value: 0
+                flags: [.flag_IsReadable, .flag_IsWritable, .flag_CanRamp], value: 0
             )
             children.append(parameter)
         }
@@ -191,13 +191,26 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
                     processedFrames = eventOffset
                 }
 
-                if eventOffset < frames && header.eventType == .parameter {
+                if eventOffset < frames {
                     let parameterEvent = current.pointee.parameter
-                    applyScheduledParameter(
-                        processor: processor,
-                        address: parameterEvent.parameterAddress,
-                        value: parameterEvent.value
-                    )
+                    switch header.eventType {
+                    case .parameter:
+                        applyScheduledParameter(
+                            processor: processor,
+                            address: parameterEvent.parameterAddress,
+                            value: parameterEvent.value,
+                            rampDurationFrames: 0
+                        )
+                    case .parameterRamp:
+                        applyScheduledParameter(
+                            processor: processor,
+                            address: parameterEvent.parameterAddress,
+                            value: parameterEvent.value,
+                            rampDurationFrames: parameterEvent.rampDurationSampleFrames
+                        )
+                    default:
+                        break
+                    }
                 }
                 event = header.next
             }
@@ -214,29 +227,46 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
     }
 
 
-    /// Applies a host-scheduled immediate parameter event on the render thread.
-    /// Parameter ramps are intentionally not treated as immediate changes.
+    /// Applies immediate changes or starts sample-by-sample ramps on the render thread.
     private func applyScheduledParameter(
         processor: RealtimeStereoEqualizer,
         address: AUParameterAddress,
-        value: AUValue
+        value: AUValue,
+        rampDurationFrames: AUAudioFrameCount
     ) {
         switch address {
         case Address.bypass:
             _ = processor.setBypassedAtRenderTime(value >= 0.5)
         case Address.outputGain:
-            _ = processor.setOutputGainAtRenderTime(Double(value))
+            if rampDurationFrames > 0 {
+                _ = processor.rampOutputGainAtRenderTime(
+                    targetGainDB: Double(value),
+                    durationFrames: rampDurationFrames
+                )
+            } else {
+                _ = processor.setOutputGainAtRenderTime(Double(value))
+            }
         case Address.firstBand..<(Address.firstBand + AUParameterAddress(RealtimeStereoEqualizer.bandFrequencies.count)):
             let band = Int(address - Address.firstBand)
-            _ = processor.setBandAtRenderTime(
-                index: band,
-                gainDB: Double(value),
-                sampleRate: inputBus.format.sampleRate
-            )
+            if rampDurationFrames > 0 {
+                _ = processor.rampBandAtRenderTime(
+                    index: band,
+                    targetGainDB: Double(value),
+                    sampleRate: inputBus.format.sampleRate,
+                    durationFrames: rampDurationFrames
+                )
+            } else {
+                _ = processor.setBandAtRenderTime(
+                    index: band,
+                    gainDB: Double(value),
+                    sampleRate: inputBus.format.sampleRate
+                )
+            }
         default:
             break
         }
     }
+
 
     public override var shouldBypassEffect: Bool {
         get { (parametersByAddress[Address.bypass]?.value ?? 0) >= 0.5 }
