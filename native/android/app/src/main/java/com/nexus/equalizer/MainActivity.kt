@@ -182,6 +182,7 @@ class MainActivity : Activity() {
             }
             bandsContainer.addView(label)
             bandsContainer.addView(slider)
+            bandSliders.add(slider)
         }
     }
 
@@ -203,7 +204,7 @@ class MainActivity : Activity() {
         }
         if (allApplied) {
             val editor = preferences.edit().putString("preset", preset.name)
-            for (index in 0 until bandCount) {
+            for (index in 0 until status.bandCount) {
                 val frequency = equalizer.centerFrequencyHz(index) ?: continue
                 val gainMb = (EqPreset.gainAt(preset, frequency.toDouble()) * 100.0).toInt()
                 editor.putInt("band_level_$index", gainMb)
