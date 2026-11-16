@@ -31,10 +31,10 @@ Local media element → 31 peaking filters → 10 parametric peaking filters →
 
 ## Next engineering milestones
 1. Verify build and test real playback on iOS Safari and Android Chrome.
-2. Add custom preset management and headphone profile library.
-3. Add filters (high-pass, low-pass, shelves and notch), stereo tools and loudness controls.
-4. Improve offline caching, app icons and install experience.
-5. Evaluate AudioWorklet DSP modules for processing that exceeds native Web Audio nodes.
+2. Add a measured headphone response profile library and per-device tuning.
+3. Add stereo crossfeed/width tools and loudness controls.
+4. Improve offline caching, iOS home-screen icons and install experience.
+5. Evaluate AudioWorklet DSP modules for advanced processing and performance.
 
 ## Status
 Early prototype. Controls are functional for audio played inside the app, but device-specific listening tests and browser compatibility checks are still required.
