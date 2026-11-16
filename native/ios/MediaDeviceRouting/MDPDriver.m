@@ -133,7 +133,7 @@ static void FourCCStr(uint32_t v, char out[5]) {
 
 #define LOGPROP(tag, obj, addr)                                                  do {                                                                             char _s[5], _c[5];                                                           FourCCStr((addr)->mSelector, _s);                                            FourCCStr((addr)->mScope, _c);                                               os_log(gLog, "%{public}s obj=%u sel=%{public}s scope=%{public}s el=%u",                tag, (unsigned)(obj), _s, _c, (unsigned)(addr)->mElement);        } while (0)
 
-static AudioStreamBasicDescription NEXUS EQUALIZERFormat(void) {
+static AudioStreamBasicDescription NexusEqualizerFormat(void) {
     AudioStreamBasicDescription f = {0};
     f.mSampleRate       = kSampleRate;
     f.mFormatID         = kAudioFormatLinearPCM;
@@ -569,12 +569,12 @@ static OSStatus MDP_GetPropertyData(AudioServerPlugInDriverRef d, AudioObjectID 
                 case kAudioStreamPropertyLatency:         PUT(UInt32, 0);
                 case kAudioStreamPropertyVirtualFormat:
                 case kAudioStreamPropertyPhysicalFormat:
-                    PUT(AudioStreamBasicDescription, NEXUS EQUALIZERFormat());
+                    PUT(AudioStreamBasicDescription, NexusEqualizerFormat());
                 case kAudioStreamPropertyAvailableVirtualFormats:
                 case kAudioStreamPropertyAvailablePhysicalFormats: {
                     if (inDataSize < sizeof(AudioStreamRangedDescription)) { *outDataSize = 0; return noErr; }
                     AudioStreamRangedDescription *r = (AudioStreamRangedDescription *)outData;
-                    r[0].mFormat = NEXUS EQUALIZERFormat();
+                    r[0].mFormat = NexusEqualizerFormat();
                     r[0].mSampleRateRange.mMinimum = kSampleRate;
                     r[0].mSampleRateRange.mMaximum = kSampleRate;
                     *outDataSize = sizeof(AudioStreamRangedDescription);
@@ -743,7 +743,7 @@ static OSStatus MDP_DoIOOperation(AudioServerPlugInDriverRef d, AudioObjectID de
     // ここで strong なローカルに受け直すと retain/release が復活するので書き換えないこと。
     void *hp = atomic_load_explicit(&gHandlerPtr, memory_order_acquire);
     if (hp) {
-        __unsafe_unretained NEXUS EQUALIZERSampleHandler h = (__bridge NEXUS EQUALIZERSampleHandler)hp;
+        __unsafe_unretained NexusEqualizerSampleHandler h = (__bridge NexusEqualizerSampleHandler)hp;
         // ストリームのフォーマットはインターリーブの float32 x2。
         // NEXUS EQUALIZER 側が非インターリーブを期待しているので、
         // ここではインターリーブのまま1面として渡し、受け側で分ける。
@@ -947,14 +947,14 @@ static void ETFillInterfaceOnce(void) {
     // 隠れていたが、後片付けが途中で飛ぶうえ、いつ落ちるかが決まらない。
     //
     // 解除の口はそもそも無い。だから「登録を落とす」のではなく
-    // 「プロセスを終える」で片づける（NEXUS EQUALIZERExtension.deactivateDevice）。
+    // 「プロセスを終える」で片づける（NexusEqualizerMediaDeviceExtension.deactivateDevice）。
     gRegistered = false;
 
     os_log(gLog, "unpublish frames=%llu registered=%d",
            (unsigned long long)gIOCount, (int)gRegistered);
 }
 
-- (void)startCaptureWithHandler:(NEXUS EQUALIZERSampleHandler)handler {
+- (void)startCaptureWithHandler:(NexusEqualizerSampleHandler)handler {
     // 意図的に解放しない（gHandlerPtr の宣言を読むこと）。
     void *p = (__bridge_retained void *)[handler copy];
     atomic_store_explicit(&gHandlerPtr, p, memory_order_release);
