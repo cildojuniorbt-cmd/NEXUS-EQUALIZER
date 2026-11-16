@@ -30,17 +30,28 @@ Critérios:
 - se o aparelho não oferecer uma rota suportada, informar claramente que não é compatível.
 
 ### iOS
-O iOS não oferece uma API pública para inserir um equalizador de terceiros na saída de áudio de todos os outros aplicativos. AUv3 é um plugin executado dentro do fluxo de um aplicativo hospedeiro compatível, não um efeito global do sistema.
+**Correção importante: iOS 27 introduziu uma rota pública para esse caso de uso.** O framework Media Device permite que o NEXUS se apresente como uma saída virtual selecionável no seletor de áudio do Control Center. Com uma Media Device Extension que implemente `RealtimeSampleHandling` e um Audio Server Plug-In publicado na ativação, o sistema pode encaminhar amostras de áudio em tempo real para processamento.
 
-Assim, o requisito literal de equalizar Spotify, YouTube, Instagram, jogos e qualquer outro app enquanto eles continuam tocando diretamente no iPhone **não pode ser cumprido por um app iOS comum usando APIs públicas**.
+A arquitetura necessária é diferente de AUv3:
+1. Media Device Extension anuncia a saída virtual NEXUS.
+2. Usuário seleciona NEXUS no seletor de saída do iOS.
+3. Audio Server Plug-In recebe o mix de áudio do sistema.
+4. Um transporte local encaminha PCM para o processo principal.
+5. O NEXUS aplica seu DSP e reproduz o resultado na saída física anterior.
 
-Não apresentar AUv3, AVAudioEngine ou a tela standalone como se resolvessem essa limitação. Eles podem oferecer processamento em hosts compatíveis ou dentro do próprio NEXUS, mas não equalização universal do iPhone.
+AUv3 continua sendo uma opção separada para hosts compatíveis, mas não é a solução para áudio de outros aplicativos.
+
+O caminho iOS 27 está documentado em `native/ios/IOS27-SYSTEM-AUDIO-ROUTING.md` e demonstrado por referências abertas:
+- https://github.com/satomasahiro2005/ios27-media-device-passthrough
+- https://github.com/satomasahiro2005/EffectDeck
+
+A rota depende da seleção do usuário e pode ser interrompida ou recusada pelo sistema em determinados apps/modos de mídia. Spotify Canvas e alguns estados de vídeo do YouTube são limitações relatadas na referência. Não prometer compatibilidade absoluta até testar em iPhone real.
 
 ## Decisão de escopo e comunicação
 
 - O produto principal continua sendo equalizador de áudio do dispositivo, sem importação de música.
 - Android: buscar o máximo de compatibilidade possível, mas publicar somente a matriz de dispositivos realmente testados.
-- iOS: documentar a limitação antes de prometer o recurso; não vender a versão iOS como equalizador global.
+- iOS 27+: implementar Media Device Extension + Audio Server Plug-In; AUv3 é complementar, não substitui a rota de áudio do sistema.
 - A tela deve distinguir: **Áudio do dispositivo processado**, **Plugin em host compatível**, **Processamento interno do NEXUS**, **Não suportado neste dispositivo/rota**.
 - Não usar mensagens como “Equalizador global ativo” sem confirmação de áudio independente realmente processado.
 
