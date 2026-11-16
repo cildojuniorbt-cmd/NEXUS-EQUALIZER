@@ -230,7 +230,9 @@ static os_log_t MDPLinkLog(void) {
     dispatch_source_t _timer;
     float *_ring;
     _Atomic uint64_t _w;
-    uint64_t _r;
+    _Atomic uint64_t _r;
+    _Atomic bool _listeningFlag;
+    _Atomic bool _peerFlag;
     // 受信したバイトをそのまま溜める。float に切り出すのは境界が揃ってから。
     uint8_t *_rxBuf;
     size_t _rxLen;
@@ -255,14 +257,14 @@ static os_log_t MDPLinkLog(void) {
     return self;
 }
 
-- (BOOL)listening { return _listenFd >= 0; }
-- (BOOL)hasPeer   { return _peerFd >= 0; }
+- (BOOL)listening { return atomic_load_explicit(&_listeningFlag, memory_order_acquire); }
+- (BOOL)hasPeer   { return atomic_load_explicit(&_peerFlag, memory_order_acquire); }
 
 + (uint32_t)targetFrames { return 2048; }
 
 - (uint32_t)bufferedFrames {
     uint64_t w = atomic_load_explicit(&_w, memory_order_acquire);
-    uint64_t r = _r;
+    uint64_t r = atomic_load_explicit(&_r, memory_order_acquire);
     if (w <= r) return 0;
     uint64_t samples = w - r;
     if (samples > RECV_RING_SAMPLES) samples = RECV_RING_SAMPLES;
@@ -298,6 +300,7 @@ static os_log_t MDPLinkLog(void) {
     int fl = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETFL, fl | O_NONBLOCK);
     _listenFd = fd;
+    atomic_store_explicit(&_listeningFlag, true, memory_order_release);
     _rxLen = 0;
     os_log_error(MDPLinkLog(), "MDP receiver 待ち受け開始 port=%d", MDP_LINK_PORT);
 
@@ -313,7 +316,9 @@ static os_log_t MDPLinkLog(void) {
     if (_timer) { dispatch_source_cancel(_timer); _timer = nil; }
     dispatch_async(_q, ^{
         if (self->_peerFd >= 0) { close(self->_peerFd); self->_peerFd = -1; }
+        atomic_store_explicit(&self->_peerFlag, false, memory_order_release);
         if (self->_listenFd >= 0) { close(self->_listenFd); self->_listenFd = -1; }
+        atomic_store_explicit(&self->_listeningFlag, false, memory_order_release);
         self->_rxLen = 0;
     });
 }
@@ -388,6 +393,7 @@ static os_log_t MDPLinkLog(void) {
             int fl = fcntl(c, F_GETFL, 0);
             fcntl(c, F_SETFL, fl | O_NONBLOCK);
             _peerFd = c;
+            atomic_store_explicit(&_peerFlag, true, memory_order_release);
             _rxLen = 0;     // 前の相手の書きかけを新しいストリームに混ぜない
             os_log_error(MDPLinkLog(), "ET 接続を受けた");
         }
@@ -401,6 +407,7 @@ static os_log_t MDPLinkLog(void) {
         if (n == 0) {
             os_log(MDPLinkLog(), "相手が切断した");
             close(_peerFd); _peerFd = -1;
+            atomic_store_explicit(&_peerFlag, false, memory_order_release);
             _rxLen = 0;
             return;
         }
@@ -408,6 +415,7 @@ static os_log_t MDPLinkLog(void) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) return;
             os_log_error(MDPLinkLog(), "recv 失敗 errno=%d", errno);
             close(_peerFd); _peerFd = -1;
+            atomic_store_explicit(&_peerFlag, false, memory_order_release);
             _rxLen = 0;
             return;
         }
@@ -419,7 +427,7 @@ static os_log_t MDPLinkLog(void) {
 
 - (uint32_t)readInterleaved:(float *)out frames:(uint32_t)frames {
     uint64_t w = atomic_load_explicit(&_w, memory_order_acquire);
-    uint64_t r = _r;
+    uint64_t r = atomic_load_explicit(&_r, memory_order_relaxed);
     uint32_t want = frames * 2;
     if (r == 0 || w > r + RECV_RING_SAMPLES) {
         uint64_t behind = (uint64_t)[MDPLinkReceiver targetFrames] * 2ull;
@@ -429,7 +437,7 @@ static os_log_t MDPLinkLog(void) {
     uint32_t got = (uint32_t)MIN(avail, (uint64_t)want);
     for (uint32_t i = 0; i < got; i++) out[i] = _ring[(r + i) % RECV_RING_SAMPLES];
     for (uint32_t i = got; i < want; i++) out[i] = 0.0f;
-    _r = r + got;
+    atomic_store_explicit(&_r, r + got, memory_order_release);
     return got / 2;
 }
 
