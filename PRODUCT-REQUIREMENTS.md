@@ -49,7 +49,7 @@ A rota depende da seleção do usuário e pode ser interrompida ou recusada pelo
 
 ## Decisão de escopo e comunicação
 
-- O produto principal continua sendo equalizador de áudio do dispositivo, sem importação de música. No iOS 27+, a rota prevista é selecionar NEXUS EQUALIZER no seletor de saída do Control Center; o usuário não precisa importar nem iniciar músicas no NEXUS.
+- O produto principal continua sendo equalizador de áudio do dispositivo, sem importação de música. No iOS 27+, a rota prevista é selecionar NEXUS EQUALIZER no seletor de saída de áudio do iOS; o usuário não precisa importar nem iniciar músicas no NEXUS.
 - Android: buscar o máximo de compatibilidade possível, mas publicar somente a matriz de dispositivos realmente testados.
 - iOS 27+: implementar Media Device Extension + Audio Server Plug-In; AUv3 é complementar, não substitui a rota de áudio do sistema.
 - A tela deve distinguir: **Áudio do dispositivo processado**, **Plugin em host compatível**, **Processamento interno do NEXUS**, **Não suportado neste dispositivo/rota**.
