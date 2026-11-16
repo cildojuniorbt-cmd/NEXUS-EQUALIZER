@@ -4,20 +4,23 @@ on:
   push:
     branches: [main]
     paths:
-      - 'native/ios/**'
+      - 'native/ios/NexusEqualizerCore/**'
       - '.github/workflows/ios-core.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'native/ios/**'
+      - 'native/ios/NexusEqualizerCore/**'
       - '.github/workflows/ios-core.yml'
   workflow_dispatch:
 
 jobs:
   test:
-    runs-on: macos-14
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '5.10'
       - name: Run portable DSP tests
         working-directory: native/ios/NexusEqualizerCore
         run: swift test
