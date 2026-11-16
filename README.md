@@ -31,4 +31,4 @@ npm run dev
 
 ## Product status
 
-Native foundations are in place, not a release-ready app yet. Android global audio behavior still requires real-device validation. The iOS AUv3 extension target, host integration, app project/signing, interface, and device testing remain required before release.
+Native foundations are in place, not a release-ready app yet. Android global audio behavior still requires real-device validation. The iOS 27 Media Device routing scaffold and DSP bridge are now in the project, but Xcode 27 compilation, entitlement provisioning/signing, physical-device routing tests, and source-app compatibility validation remain before release.
