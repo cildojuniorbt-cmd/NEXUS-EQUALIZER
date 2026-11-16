@@ -172,9 +172,10 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
                 right = nil
             }
 
-            // AU render events are time ordered. Render audio up to each
-            // immediate parameter event, apply it on the render thread, then
+            // AU render events are time ordered. Drain control commands once, then
+            // render audio up to each event and apply it on the render thread, then
             // continue from the exact sample offset.
+            processor.beginRenderBlock()
             let cycleStart = AUEventSampleTime(timestamp.pointee.mSampleTime)
             var processedFrames = 0
             var event = realtimeEventListHead
@@ -183,7 +184,7 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
                 let offset64 = max(0, header.eventSampleTime - cycleStart)
                 let eventOffset = min(frames, Int(min(offset64, AUEventSampleTime(Int64(frames)))))
                 if eventOffset > processedFrames {
-                    processor.processPlanar(
+                    processor.processPlanarSegment(
                         left: left.advanced(by: processedFrames),
                         right: right?.advanced(by: processedFrames),
                         frameCount: eventOffset - processedFrames
@@ -216,7 +217,7 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
             }
 
             if processedFrames < frames {
-                processor.processPlanar(
+                processor.processPlanarSegment(
                     left: left.advanced(by: processedFrames),
                     right: right?.advanced(by: processedFrames),
                     frameCount: frames - processedFrames
