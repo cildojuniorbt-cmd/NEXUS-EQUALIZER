@@ -153,7 +153,7 @@ struct EqualizerView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("IMPORTANTE SOBRE O iOS", systemImage: "info.circle.fill")
                 .font(.system(size: 11, weight: .bold)).foregroundStyle(.cyan)
-            Text("No iOS 27, selecione NEXUS EQUALIZER no seletor de saída do Control Center. O sistema poderá encaminhar áudio compatível de outros apps para processamento. Alguns apps e modos de vídeo podem interromper a rota.")
+            Text("No iOS 27, selecione NEXUS EQUALIZER no seletor de saída de áudio do iOS. O sistema poderá encaminhar áudio compatível de outros apps para processamento. Alguns apps e modos de vídeo podem interromper a rota.")
                 .font(.system(size: 12)).foregroundStyle(.white.opacity(0.65)).fixedSize(horizontal: false, vertical: true)
         }
         .padding(15)
