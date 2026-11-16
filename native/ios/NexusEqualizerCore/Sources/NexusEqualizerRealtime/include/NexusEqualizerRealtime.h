@@ -48,7 +48,12 @@ bool nexus_eq_realtime_render_ramp_output_gain(
 
 /* In-place interleaved stereo render. No locks, allocations, or system calls. */
 void nexus_eq_realtime_render(NexusEQRealtime *eq, float *interleaved, size_t sample_count);
-/* Planar float render for AUv3 non-interleaved buffers. right may be NULL for mono. */
+/* Drain control commands once at the beginning of an AU render block. */
+void nexus_eq_realtime_render_begin_block(NexusEQRealtime *eq);
+/* Planar AU segment render after begin_block; does not consume the queue again. */
+void nexus_eq_realtime_render_planar_segment(
+    NexusEQRealtime *eq, float *left, float *right, size_t frame_count);
+/* Planar float render for general use; right may be NULL for mono. */
 void nexus_eq_realtime_render_planar(NexusEQRealtime *eq, float *left, float *right, size_t frame_count);
 
 #ifdef __cplusplus
