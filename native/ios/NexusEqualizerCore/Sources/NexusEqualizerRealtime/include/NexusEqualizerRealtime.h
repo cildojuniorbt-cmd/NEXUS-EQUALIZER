@@ -38,8 +38,12 @@ bool nexus_eq_realtime_set_output_gain(NexusEQRealtime *eq, float linear_gain);
  */
 bool nexus_eq_realtime_render_set_coefficients(
     NexusEQRealtime *eq, size_t band, NexusEQBiquadCoefficients coefficients);
+bool nexus_eq_realtime_render_ramp_coefficients(
+    NexusEQRealtime *eq, size_t band, NexusEQBiquadCoefficients target, uint32_t duration_frames);
 bool nexus_eq_realtime_render_set_bypass(NexusEQRealtime *eq, bool bypassed);
 bool nexus_eq_realtime_render_set_output_gain(NexusEQRealtime *eq, float linear_gain);
+bool nexus_eq_realtime_render_ramp_output_gain(
+    NexusEQRealtime *eq, float target_linear_gain, uint32_t duration_frames);
 
 /* In-place interleaved stereo render. No locks, allocations, or system calls. */
 void nexus_eq_realtime_render(NexusEQRealtime *eq, float *interleaved, size_t sample_count);
