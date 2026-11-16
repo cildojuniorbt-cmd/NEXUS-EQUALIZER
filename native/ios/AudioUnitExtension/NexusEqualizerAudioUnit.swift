@@ -151,6 +151,7 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
         guard let processor else {
             return { _, _, _, _, _, _, _ in kAudioUnitErr_Uninitialized }
         }
+        let sampleRate = inputBus.format.sampleRate
         return { actionFlags, timestamp, frameCount, outputBusNumber, outputData, realtimeEventListHead, pullInputBlock in
             guard outputBusNumber == 0, let outputData, let pullInputBlock else {
                 return kAudioUnitErr_InvalidParameter
@@ -196,10 +197,11 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
                     let parameterEvent = current.pointee.parameter
                     switch header.eventType {
                     case .parameter:
-                        applyScheduledParameter(
+                        Self.applyScheduledParameter(
                             processor: processor,
                             address: parameterEvent.parameterAddress,
                             value: parameterEvent.value,
+                            sampleRate: sampleRate,
                             rampDurationFrames: 0
                         )
                     case .parameterRamp:
@@ -229,10 +231,11 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
 
 
     /// Applies immediate changes or starts sample-by-sample ramps on the render thread.
-    private func applyScheduledParameter(
+    private static func applyScheduledParameter(
         processor: RealtimeStereoEqualizer,
         address: AUParameterAddress,
         value: AUValue,
+        sampleRate: Double,
         rampDurationFrames: AUAudioFrameCount
     ) {
         switch address {
@@ -253,7 +256,7 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
                 _ = processor.rampBandAtRenderTime(
                     index: band,
                     targetGainDB: Double(value),
-                    sampleRate: inputBus.format.sampleRate,
+                    sampleRate: sampleRate,
                     durationFrames: rampDurationFrames
                 )
             } else {
