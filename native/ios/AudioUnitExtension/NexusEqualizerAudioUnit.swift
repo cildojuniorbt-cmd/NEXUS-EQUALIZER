@@ -124,7 +124,7 @@ public final class NexusEqualizerAudioUnit: AUAudioUnit {
     }
 
     public override var shouldBypassEffect: Bool {
-        get { parametersByAddress[Address.bypass]?.value ?? 0 >= 0.5 }
+        get { (parametersByAddress[Address.bypass]?.value ?? 0) >= 0.5 }
         set {
             parametersByAddress[Address.bypass]?.value = newValue ? 1 : 0
             _ = processor?.setBypassed(newValue)
