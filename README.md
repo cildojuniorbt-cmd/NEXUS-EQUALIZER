@@ -15,6 +15,11 @@ A browser-based personal audio processor for Android and iPhone, built around th
 - Responsive white + graphite interface.
 - PWA manifest and basic app-shell caching.
 
+## Publish with GitHub Pages
+1. Open repository Settings → Pages.
+2. Under Build and deployment, choose **GitHub Actions** as the source.
+3. Push to `main` or run the Deploy NEXUS EQUALIZER workflow manually.
+
 ## Run locally
 ```bash
 npm install
