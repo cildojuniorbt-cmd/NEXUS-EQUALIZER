@@ -144,7 +144,7 @@ class MainActivity : Activity() {
                 val selected = preferences.getString("preset", null) == preset.name
                 setBackgroundColor(if (selected) 0xFF5DE1E6.toInt() else 0xFF27313D.toInt())
                 setPadding(18, 12, 18, 12)
-                setOnClickListener { applyPreset(preset, status.bandCount) }
+                setOnClickListener { applyPreset(preset, status) }
             }
             val params = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -186,9 +186,9 @@ class MainActivity : Activity() {
     }
 
 
-    private fun applyPreset(preset: EqPreset, bandCount: Int) {
+    private fun applyPreset(preset: EqPreset, status: SystemEqualizerController.Status) {
         var allApplied = true
-        for (index in 0 until bandCount) {
+        for (index in 0 until status.bandCount) {
             val frequency = equalizer.centerFrequencyHz(index)
             if (frequency == null) {
                 allApplied = false
@@ -196,6 +196,10 @@ class MainActivity : Activity() {
             }
             val gainMb = (EqPreset.gainAt(preset, frequency.toDouble()) * 100.0).toInt()
             if (!equalizer.setBandLevel(index, gainMb)) allApplied = false
+            else if (index < bandSliders.size) {
+                bandSliders[index].progress =
+                    gainMb.coerceIn(status.minLevelMb, status.maxLevelMb) - status.minLevelMb
+            }
         }
         if (allApplied) {
             val editor = preferences.edit().putString("preset", preset.name)
