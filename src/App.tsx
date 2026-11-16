@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AudioLines, Power, RotateCcw, SlidersHorizontal, Save, Trash2, Activity } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AudioLines, Power, RotateCcw, SlidersHorizontal, Save, Trash2, Activity, RefreshCw, Download } from 'lucide-react';
 
 const BANDS = [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 const PRESETS = {
@@ -21,7 +21,7 @@ export default function App() {
   const [custom, setCustom] = useState<Record<string, SavedPreset>>({});
   const [name, setName] = useState('');
   const [tab, setTab] = useState<'eq'|'presets'>('eq');
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(false);\n  const [updateAvailable, setUpdateAvailable] = useState(false);\n  const [updateInstalling, setUpdateInstalling] = useState(false);\n  const applyingUpdate = useRef(false);\n\n  useEffect(() => {\n    if (!('serviceWorker' in navigator)) return;\n    let registration: ServiceWorkerRegistration | undefined;\n    let intervalId: number | undefined;\n    let disposed = false;\n\n    const inspectRegistration = () => {\n      if (!disposed && registration?.waiting && navigator.serviceWorker.controller) setUpdateAvailable(true);\n    };\n    const handleControllerChange = () => {\n      if (applyingUpdate.current) window.location.reload();\n    };\n    const checkForUpdates = () => {\n      if (document.visibilityState === 'visible') registration?.update().catch(() => undefined);\n    };\n    const handleUpdateFound = () => {\n      registration?.installing?.addEventListener('statechange', inspectRegistration);\n    };\n\n    navigator.serviceWorker.getRegistration().then(current => {\n      if (disposed || !current) return;\n      registration = current;\n      inspectRegistration();\n      registration.addEventListener('updatefound', handleUpdateFound);\n      window.addEventListener('focus', checkForUpdates);\n      intervalId = window.setInterval(checkForUpdates, 6 * 60 * 60 * 1000);\n      checkForUpdates();\n    }).catch(() => undefined);\n    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);\n\n    return () => {\n      disposed = true;\n      if (intervalId) window.clearInterval(intervalId);\n      registration?.removeEventListener('updatefound', handleUpdateFound);\n      window.removeEventListener('focus', checkForUpdates);\n      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);\n    };\n  }, []);\n\n  function applyAvailableUpdate() {\n    navigator.serviceWorker?.getRegistration().then(registration => {\n      if (!registration?.waiting) { setUpdateAvailable(false); return; }\n      applyingUpdate.current = true;\n      setUpdateInstalling(true);\n      registration.waiting.postMessage({ type: 'NEXUS_SKIP_WAITING' });\n    }).catch(() => setUpdateInstalling(false));\n  }
 
   useEffect(() => {
     try {
@@ -114,6 +114,6 @@ export default function App() {
       <p className="module-copy">Seus ajustes ficam salvos neste navegador.</p>
     </section>
 
-    <footer><span>NEXUS EQUALIZER</span><span>WEB CONTROL · PREVIEW 0.2.0</span></footer>
+    <footer><span>NEXUS EQUALIZER</span><span>WEB CONTROL · VERSÃO 0.1.0</span></footer>
   </main>;
 }
