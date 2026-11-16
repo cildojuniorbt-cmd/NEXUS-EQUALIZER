@@ -6,7 +6,8 @@ let package = Package(
     platforms: [.iOS(.v15), .macOS(.v13)],
     products: [.library(name: "NexusEqualizerCore", targets: ["NexusEqualizerCore"])],
     targets: [
-        .target(name: "NexusEqualizerCore"),
+        .target(name: "NexusEqualizerRealtime", publicHeadersPath: "include"),
+        .target(name: "NexusEqualizerCore", dependencies: ["NexusEqualizerRealtime"]),
         .testTarget(name: "NexusEqualizerCoreTests", dependencies: ["NexusEqualizerCore"])
     ]
 )
