@@ -49,10 +49,10 @@ public struct BiquadEQ: Sendable {
     }
 
     public struct State: Sendable {
-        fileprivate var x1 = 0.0
-        fileprivate var x2 = 0.0
-        fileprivate var y1 = 0.0
-        fileprivate var y2 = 0.0
+        var x1 = 0.0
+        var x2 = 0.0
+        var y1 = 0.0
+        var y2 = 0.0
         public init() {}
     }
 }
