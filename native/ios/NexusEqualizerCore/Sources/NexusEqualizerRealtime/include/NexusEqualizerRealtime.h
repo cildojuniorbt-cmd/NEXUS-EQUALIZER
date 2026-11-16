@@ -31,6 +31,16 @@ bool nexus_eq_realtime_set_coefficients(
 bool nexus_eq_realtime_set_bypass(NexusEQRealtime *eq, bool bypassed);
 bool nexus_eq_realtime_set_output_gain(NexusEQRealtime *eq, float linear_gain);
 
+
+/*
+ * Audio-thread-only immediate updates for timestamped AU render events.
+ * Call only from the single render thread, never from control/UI callbacks.
+ */
+bool nexus_eq_realtime_render_set_coefficients(
+    NexusEQRealtime *eq, size_t band, NexusEQBiquadCoefficients coefficients);
+bool nexus_eq_realtime_render_set_bypass(NexusEQRealtime *eq, bool bypassed);
+bool nexus_eq_realtime_render_set_output_gain(NexusEQRealtime *eq, float linear_gain);
+
 /* In-place interleaved stereo render. No locks, allocations, or system calls. */
 void nexus_eq_realtime_render(NexusEQRealtime *eq, float *interleaved, size_t sample_count);
 /* Planar float render for AUv3 non-interleaved buffers. right may be NULL for mono. */
