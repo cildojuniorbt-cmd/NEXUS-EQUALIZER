@@ -21,7 +21,58 @@ export default function App() {
   const [custom, setCustom] = useState<Record<string, SavedPreset>>({});
   const [name, setName] = useState('');
   const [tab, setTab] = useState<'eq'|'presets'>('eq');
-  const [saved, setSaved] = useState(false);\n  const [updateAvailable, setUpdateAvailable] = useState(false);\n  const [updateInstalling, setUpdateInstalling] = useState(false);\n  const applyingUpdate = useRef(false);\n\n  useEffect(() => {\n    if (!('serviceWorker' in navigator)) return;\n    let registration: ServiceWorkerRegistration | undefined;\n    let intervalId: number | undefined;\n    let disposed = false;\n\n    const inspectRegistration = () => {\n      if (!disposed && registration?.waiting && navigator.serviceWorker.controller) setUpdateAvailable(true);\n    };\n    const handleControllerChange = () => {\n      if (applyingUpdate.current) window.location.reload();\n    };\n    const checkForUpdates = () => {\n      if (document.visibilityState === 'visible') registration?.update().catch(() => undefined);\n    };\n    const handleUpdateFound = () => {\n      registration?.installing?.addEventListener('statechange', inspectRegistration);\n    };\n\n    navigator.serviceWorker.getRegistration().then(current => {\n      if (disposed || !current) return;\n      registration = current;\n      inspectRegistration();\n      registration.addEventListener('updatefound', handleUpdateFound);\n      window.addEventListener('focus', checkForUpdates);\n      intervalId = window.setInterval(checkForUpdates, 6 * 60 * 60 * 1000);\n      checkForUpdates();\n    }).catch(() => undefined);\n    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);\n\n    return () => {\n      disposed = true;\n      if (intervalId) window.clearInterval(intervalId);\n      registration?.removeEventListener('updatefound', handleUpdateFound);\n      window.removeEventListener('focus', checkForUpdates);\n      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);\n    };\n  }, []);\n\n  function applyAvailableUpdate() {\n    navigator.serviceWorker?.getRegistration().then(registration => {\n      if (!registration?.waiting) { setUpdateAvailable(false); return; }\n      applyingUpdate.current = true;\n      setUpdateInstalling(true);\n      registration.waiting.postMessage({ type: 'NEXUS_SKIP_WAITING' });\n    }).catch(() => setUpdateInstalling(false));\n  }
+  const [saved, setSaved] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [updateInstalling, setUpdateInstalling] = useState(false);
+  const applyingUpdate = useRef(false);
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    let registration: ServiceWorkerRegistration | undefined;
+    let intervalId: number | undefined;
+    let disposed = false;
+
+    const inspectRegistration = () => {
+      if (!disposed && registration?.waiting && navigator.serviceWorker.controller) setUpdateAvailable(true);
+    };
+    const handleControllerChange = () => {
+      if (applyingUpdate.current) window.location.reload();
+    };
+    const checkForUpdates = () => {
+      if (document.visibilityState === 'visible') registration?.update().catch(() => undefined);
+    };
+    const handleUpdateFound = () => {
+      registration?.installing?.addEventListener('statechange', inspectRegistration);
+    };
+
+    navigator.serviceWorker.getRegistration().then(current => {
+      if (disposed || !current) return;
+      registration = current;
+      inspectRegistration();
+      registration.addEventListener('updatefound', handleUpdateFound);
+      window.addEventListener('focus', checkForUpdates);
+      intervalId = window.setInterval(checkForUpdates, 6 * 60 * 60 * 1000);
+      checkForUpdates();
+    }).catch(() => undefined);
+    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+
+    return () => {
+      disposed = true;
+      if (intervalId) window.clearInterval(intervalId);
+      registration?.removeEventListener('updatefound', handleUpdateFound);
+      window.removeEventListener('focus', checkForUpdates);
+      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+    };
+  }, []);
+
+  function applyAvailableUpdate() {
+    navigator.serviceWorker?.getRegistration().then(registration => {
+      if (!registration?.waiting) { setUpdateAvailable(false); return; }
+      applyingUpdate.current = true;
+      setUpdateInstalling(true);
+      registration.waiting.postMessage({ type: 'NEXUS_SKIP_WAITING' });
+    }).catch(() => setUpdateInstalling(false));
+  }
 
   useEffect(() => {
     try {
@@ -73,6 +124,12 @@ export default function App() {
       <div className="brand"><div className="brand-mark"><AudioLines size={22}/></div><div><strong>NEXUS</strong><span>EQUALIZER</span></div></div>
       <div className="top-status"><span className="status-dot active"/> CONTROL PANEL <span className="save-state">{saved ? '· SALVO' : ''}</span></div>
     </header>
+
+    {updateAvailable && <section className="update-banner" role="status" aria-live="polite">
+      <div className="update-banner-icon"><Download size={18}/></div>
+      <div className="update-banner-copy"><strong>Uma nova versão do NEXUS EQ está disponível</strong><span>Atualize agora para receber as melhorias mais recentes. Seus ajustes salvos serão preservados.</span></div>
+      <button className="update-action" onClick={applyAvailableUpdate} disabled={updateInstalling}><RefreshCw size={15} className={updateInstalling ? 'spin' : ''}/>{updateInstalling ? 'ATUALIZANDO' : 'ATUALIZAR'}</button>
+    </section>}
 
     <section className="hero">
       <div><p className="eyebrow">PRECISÃO SONORA · CONTROLE DE EQUALIZAÇÃO</p><h1>Seu som.<br/><em>Seu equilíbrio.</em></h1><p className="hero-copy">Um equalizador dedicado. Sem player, sem biblioteca, sem importar músicas.</p></div>
