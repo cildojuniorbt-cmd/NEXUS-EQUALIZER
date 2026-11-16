@@ -1,5 +1,7 @@
 # NEXUS EQUALIZER
 
+**Produto pretendido: equalizar o áudio que já está tocando no celular, sem importar músicas e sem exigir um player interno.** Consulte [PRODUCT-REQUIREMENTS.md](PRODUCT-REQUIREMENTS.md) para os requisitos e as limitações reais de cada plataforma.
+
 NEXUS EQUALIZER is being developed as a native audio-equalizer product for Android and iOS. The original Vite/Web Audio app is retained as a browser prototype and DSP/UI reference; it is **not** a system-wide equalizer.
 
 ## Native development
