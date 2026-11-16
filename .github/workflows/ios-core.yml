@@ -1,0 +1,23 @@
+name: iOS DSP core tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'native/ios/**'
+      - '.github/workflows/ios-core.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'native/ios/**'
+      - '.github/workflows/ios-core.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run portable DSP tests
+        working-directory: native/ios/NexusEqualizerCore
+        run: swift test
