@@ -40,4 +40,31 @@ final class StereoEqualizerTests: XCTestCase {
         eq.processInterleavedStereo(&samples)
         XCTAssertTrue(samples.allSatisfy { $0.isFinite })
     }
+    func testLeftAndRightChannelsRemainIndependent() {
+        let eq = StereoEqualizer(frequencies: [])
+        eq.setBypassed(true)
+        var samples: [Float] = [1, 0]
+        eq.processInterleavedStereo(&samples)
+        XCTAssertEqual(samples[0], 1, accuracy: 0.0001)
+        XCTAssertEqual(samples[1], 0, accuracy: 0.0001)
+    }
+
+    func testOutputGainIsClampedToDocumentedMaximum() {
+        let eq = StereoEqualizer(frequencies: [])
+        eq.setBypassed(true)
+        eq.setOutputGainDB(24)
+        var samples: [Float] = [1, 1]
+        eq.processInterleavedStereo(&samples)
+        XCTAssertEqual(samples[0], Float(pow(10, 6.0 / 20)), accuracy: 0.001)
+        XCTAssertEqual(samples[1], Float(pow(10, 6.0 / 20)), accuracy: 0.001)
+    }
+
+    func testOddSampleCountDoesNotCrashOrReadPastEnd() {
+        let eq = StereoEqualizer(frequencies: [])
+        var samples: [Float] = [0.1, -0.1, 0.2]
+        eq.processInterleavedStereo(&samples)
+        XCTAssertEqual(samples.count, 3)
+        XCTAssertTrue(samples.allSatisfy { $0.isFinite })
+    }
+
 }
