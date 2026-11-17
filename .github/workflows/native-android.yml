@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - 'native/android/**'
+      - 'src/**'
       - '.github/workflows/native-android.yml'
   pull_request:
     branches: [main]
     paths:
       - 'native/android/**'
+      - 'src/**'
       - '.github/workflows/native-android.yml'
   workflow_dispatch:
 
@@ -18,6 +20,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build the Studio web UI for the Android WebView
+        run: |
+          npm install
+          npm test
+          NEXUS_NATIVE=true npm run build
+          rm -rf native/android/app/src/main/assets/studio
+          mkdir -p native/android/app/src/main/assets/studio
+          cp -r dist/. native/android/app/src/main/assets/studio/
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -29,6 +42,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Unit tests (plan to DynamicsProcessing mapping)
+        working-directory: native/android
+        run: gradle testDebugUnitTest
       - name: Assemble debug APK
         working-directory: native/android
         run: gradle assembleDebug
