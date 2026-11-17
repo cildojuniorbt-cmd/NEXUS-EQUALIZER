@@ -71,7 +71,7 @@ export function defaultConfig(): NexusConfig {
       expander: { ...DEFAULT_EXPANDER, enabled: false },
       deesser: { ...DEFAULT_DEESSER, enabled: false },
       compressor: { ...DEFAULT_COMPRESSOR, enabled: true },
-      multiband: { ...structuredClone(DEFAULT_MULTIBAND), enabled: false },
+      multiband: { ...JSON.parse(JSON.stringify(DEFAULT_MULTIBAND)), enabled: false },
       mix: 1, autoGain: false,
       saturation: { amount: 0, mix: 1 },
       exciter: { amount: 0, freq: 3000 },
@@ -81,7 +81,7 @@ export function defaultConfig(): NexusConfig {
     stereo: { ...DEFAULT_STEREO },
     voice: { ...DEFAULT_VOICE },
     bass: { ...DEFAULT_BASS },
-    room: { enabled: false, config: structuredClone(DEFAULT_ROOM), correction: [] },
+    room: { enabled: false, config: JSON.parse(JSON.stringify(DEFAULT_ROOM)), correction: [] },
     headphone: { enabled: false, profile: defaultHeadphoneProfile() },
     safety: { maxBoostDb: 12, autoPreamp: true, clipProtection: true, ceilingDb: -0.3, warnPeakDb: -1 },
   };
