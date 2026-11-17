@@ -14,7 +14,7 @@ Executar os testes: `npm test` (Node 22+, sem dependências).
 | Stereo (width, M/S, balance, L/R, mono, inversão, crossfeed, correlação) | `stereo.ts` | Sim | Sim |
 | Voice (redução de ruído espectral, gate, de-esser, compressor, presença, clareza) | `voice.ts` | Sim | Cada controle altera o áudio (prova geral) |
 | Bass (sub bass, boost, low shelf, subsônico, harmônicos) | `bass.ts` | Sim | Cada controle altera o áudio (prova geral) |
-| Room (modelo de sala, alinhamento de caixas, medição por sweep, RT60, ajuste de EQ de correção) | `room.ts` | Sim; medições sempre marcadas `calibrated: false` | Só o controle de correção; **sem testes de sweep/RT60** |
+| Room (modelo de sala, alinhamento de caixas, medição por sweep, RT60, ajuste de EQ de correção) | `room.ts` | Sim; medições sempre marcadas `calibrated: false` | Tela Room Studio + testes sintéticos (RT60 ±20 %, pico de modo detectado, alinhamento); medição por microfone **não calibrada**, verificada com microfone falso no Chromium |
 | Headphone (perfis, crossfeed, espacial, correção manual) | `headphone.ts` | Sim | Cada controle altera o áudio (prova geral) |
 | Safety (limite de ganho, auto pré-amp, ceiling) | `safety.ts` | Sim | Ceiling, auto pré-amp, limite de ganho |
 | Analyzer (FFT, RMS, pico, clipping, LUFS BS.1770, correlação) | `analyzer.ts` | Sim | FFT, pico/RMS, clipping, LUFS |
@@ -34,3 +34,17 @@ A suíte (`test/dsp.test.ts`) inclui uma "prova geral" com 70 controles: cada um
 - Medições com microfone do aparelho não são calibradas; não devem ser apresentadas como medição profissional nem como dB SPL.
 - Curvas de modelos específicos de fones não são incluídas, porque não há medição verificável embutida. Use ajuste manual ou importe uma medição.
 - Android e iOS: o motor ainda não foi portado para as APIs nativas. Ver `native/docs/PLATFORM-CAPABILITIES.md` para o que cada plataforma permite.
+
+
+## Plataformas nativas (plano v1)
+
+A UI web (Studio) reduz a configuração a um "plano" JSON (`src/native/plan.ts`, testado em `test/plan.test.ts`) enviado por `window.NexusNative` (Android) ou `webkit.messageHandlers.nexus` (iOS).
+
+| Módulo | Android (DynamicsProcessing, API 28+) | iOS |
+|---|---|---|
+| EQ 31 bandas (inclui Room/Bass/Tone na curva) | Sim, `DynamicsMapper.eqBands` (±15 dB, teste JVM) | Núcleo Swift `BiquadEQ`; sem ligação global |
+| Compressor / multibanda / gate / expansor | Sim (MBC + noise gate), testado | Compressor portado (`DynamicsProcessor.swift`, testes no CI) |
+| Limitador | Sim | `PeakLimiter` (ataque instantâneo, sem true-peak) |
+| Estéreo, Voz, harmônicos de graves, saturação, exciter, de-esser, headphone espacial | **Não aplicados** (listados como não suportados na UI) | Somente no modo web/PWA |
+
+Limites: no Android o efeito global (sessão 0) é obsoleto e depende do aparelho; só chega a apps que anunciam a sessão de áudio. Não há serviço em primeiro plano, então o processo pode ser encerrado pelo sistema. No iOS não existe EQ global do sistema; o processamento vale para o áudio que passa pelo app/AUv3. Nenhum teste local de Kotlin/Swift foi possível; a verificação vem do CI (Android unit tests, `swift test`), que passou. Ainda **não verificado em aparelho real**.
