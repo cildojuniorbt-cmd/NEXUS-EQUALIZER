@@ -18,6 +18,7 @@ export class NexusAudio {
   private src: AudioNode | null = null;
   private stream: MediaStream | null = null;
   private config: NexusConfig = defaultConfig();
+  private loudness = false;
   constructor(private workletUrl: string | URL, private events: NexusAudioEvents = {}) {}
 
   get running(): boolean { return this.ctx?.state === 'running'; }
@@ -37,6 +38,7 @@ export class NexusAudio {
       this.node.connect(this.analyser);
       this.analyser.connect(this.ctx.destination);
       this.post({ type: 'config', config: this.config });
+      this.post({ type: 'loudness', enabled: this.loudness });
     }
     await this.setSource(source, deviceId);
     await this.ctx.resume();
@@ -65,6 +67,8 @@ export class NexusAudio {
 
   setConfig(cfg: NexusConfig): void { this.config = cfg; this.post({ type: 'config', config: cfg }); }
   reset(): void { this.post({ type: 'reset' }); }
+  /** LUFS metering costs CPU, so it is only enabled while a screen needs it. */
+  setLoudness(enabled: boolean): void { this.loudness = enabled; this.post({ type: 'loudness', enabled }); }
 
   /** Output spectrum in dBFS-like units from the AnalyserNode (for the display only). */
   spectrum(out: Float32Array<ArrayBuffer>): void { this.analyser?.getFloatFrequencyData(out); }

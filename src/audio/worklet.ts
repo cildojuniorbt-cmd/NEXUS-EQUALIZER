@@ -9,7 +9,7 @@ declare class AudioWorkletProcessor {
 }
 declare function registerProcessor(name: string, ctor: new () => AudioWorkletProcessor): void;
 
-export type WorkletIn = { type: 'config'; config: NexusConfig } | { type: 'reset' };
+export type WorkletIn = { type: 'config'; config: NexusConfig } | { type: 'reset' } | { type: 'loudness'; enabled: boolean };
 export type WorkletOut = { type: 'meters'; meters: EngineMeters; report: EngineReport } | { type: 'error'; message: string };
 
 const METER_EVERY_BLOCKS = 6; // ≈ 16 ms at 48 kHz
@@ -31,6 +31,7 @@ class NexusProcessor extends AudioWorkletProcessor {
       try {
         if (e.data.type === 'config') this.engine.setConfig(e.data.config);
         else if (e.data.type === 'reset') this.engine.reset();
+        else if (e.data.type === 'loudness') this.engine.loudnessEnabled = e.data.enabled;
       } catch (err) {
         this.port.postMessage({ type: 'error', message: 'message: ' + String((err as Error)?.stack ?? err) } satisfies WorkletOut);
       }
