@@ -6,9 +6,12 @@ import { evaluateSafety, type SafetyWarning } from '../dsp/safety.ts';
 import { factoryPresets, type Preset } from '../dsp/presets.ts';
 import { NexusAudio, type InputSource } from '../audio/controller.ts';
 import workletUrl from '../audio/worklet.ts?worker&url';
+import { buildNativePlan } from '../native/plan.ts';
+import { nativePlatform, readStatus, sendPlan, type NativeStatus } from '../native/bridge.ts';
 
 const CFG_KEY = 'nexus-eq-studio-config-v1';
 const PRESET_KEY = 'nexus-eq-studio-presets-v1';
+const NATIVE_KEY = 'nexus-eq-native-on-v1';
 
 function load<T>(key: string, fallback: T, map: (raw: unknown) => T): T {
   try { const raw = localStorage.getItem(key); return raw ? map(JSON.parse(raw)) : fallback; } catch { return fallback; }
@@ -22,7 +25,10 @@ export const EMPTY_METERS: EngineMeters = {
 };
 const EMPTY_REPORT: EngineReport = { toneBoostDb: 0, appliedPreampDb: 0, latencySamples: 0, stages: [] };
 
+export interface NativeState { platform: 'android' | 'ios'; on: boolean; status: NativeStatus | null; unsupported: string[]; toggle: () => void }
+
 interface Store {
+  native: NativeState | null;
   cfg: NexusConfig;
   update: (fn: (c: NexusConfig) => void) => void;
   replace: (c: NexusConfig) => void;
@@ -111,6 +117,20 @@ export function NexusProvider({ children }: { children: ReactNode }) {
   useEffect(() => { if (running) audio.current?.setLoudness(loudnessWanted.current); }, [running]);
 
   // Service-worker update flow (kept from the previous app).
+  // Native shell (Android/iOS): the same UI drives the platform effect through the bridge.
+  const platform = useMemo(() => nativePlatform(), []);
+  const [nativeOn, setNativeOn] = useState<boolean>(() => { try { return localStorage.getItem(NATIVE_KEY) === '1'; } catch { return false; } });
+  const [nativeStatus, setNativeStatus] = useState<NativeStatus | null>(null);
+  const plan = useMemo(() => (platform ? buildNativePlan(cfg, nativeOn && !cfg.bypass) : null), [platform, cfg, nativeOn]);
+  useEffect(() => {
+    if (!plan) return;
+    const id = window.setTimeout(() => { const st = sendPlan(plan) ?? readStatus(); if (st) setNativeStatus(st); }, 120);
+    return () => window.clearTimeout(id);
+  }, [plan]);
+  useEffect(() => { try { localStorage.setItem(NATIVE_KEY, nativeOn ? '1' : '0'); } catch { /* ignore */ } }, [nativeOn]);
+  useEffect(() => { if (!platform) return; window.__nexusNativeStatus = json => { try { setNativeStatus(JSON.parse(json) as NativeStatus); } catch { /* ignore */ } }; return () => { window.__nexusNativeStatus = undefined; }; }, [platform]);
+  const native: NativeState | null = platform && plan ? { platform, on: nativeOn, status: nativeStatus, unsupported: plan.unsupported, toggle: () => setNativeOn(v => !v) } : null;
+
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [updateInstalling, setUpdateInstalling] = useState(false);
   const applying = useRef(false);
@@ -139,6 +159,6 @@ export function NexusProvider({ children }: { children: ReactNode }) {
   const warnings = useMemo(() => (running ? evaluateSafety(cfg, report, meters) : []), [running, cfg, report, meters]);
   const presets = useMemo(() => [...factoryPresets(), ...userPresets], [userPresets]);
 
-  const value: Store = { cfg, update, replace, running, source, setSource, toggleRun, error, meters, report, warnings, spectrum, setLoudness, setOutputDevice, latencyInfo, sampleRate: audio.current?.sampleRate ?? 48000, userPresets, setUserPresets, presets, updateAvailable, updateInstalling, applyUpdate };
+  const value: Store = { native, cfg, update, replace, running, source, setSource, toggleRun, error, meters, report, warnings, spectrum, setLoudness, setOutputDevice, latencyInfo, sampleRate: audio.current?.sampleRate ?? 48000, userPresets, setUserPresets, presets, updateAvailable, updateInstalling, applyUpdate };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

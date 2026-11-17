@@ -6,12 +6,13 @@ import { useNexus } from '../store.tsx';
 const lufs = (v: number) => (Number.isFinite(v) ? v.toFixed(1) + ' LUFS' : '— LUFS');
 
 export function AnalyzerScreen({ onBack }: { onBack: () => void }) {
-  const { meters: m, running, report, setLoudness } = useNexus();
+  const { meters: m, running, report, setLoudness, native } = useNexus();
   useEffect(() => { setLoudness(true); return () => setLoudness(false); }, [setLoudness]);
   return <div className="nx-screen">
     <Header title="Audio Analyzer" onBack={onBack} />
+    {native && <p className="nx-hint warn">No modo sistema ({native.platform === 'android' ? 'Android' : 'iOS'}) o Android/iOS não entrega o sinal de outros apps ao NEXUS, então não há medidores nem espectro reais. Nada é simulado.</p>}
     <Display showSpectrum height={170} />
-    {!running && <p className="nx-hint">O analisador só mostra dados com sinal real. Ligue o NEXUS EQ na tela inicial.</p>}
+    {!native && !running && <p className="nx-hint">O analisador só mostra dados com sinal real. Ligue o NEXUS EQ na tela inicial.</p>}
     <Card title="Níveis (dBFS)">
       <Meter label="Entrada pico" db={m.inPeakDb} />
       <Meter label="Entrada RMS" db={m.inRmsDb} />

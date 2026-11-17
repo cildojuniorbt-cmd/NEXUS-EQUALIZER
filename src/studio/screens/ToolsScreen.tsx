@@ -1,9 +1,10 @@
 import { Card, Header, Icon, Knob, ToggleRow, fmtDb } from '../ui.tsx';
 import { useNexus } from '../store.tsx';
+import { openClassic } from '../../native/bridge.ts';
 import { SPL_NOTICE } from '../../dsp/safety.ts';
 
 export function ToolsScreen({ onLegacy }: { onLegacy: () => void }) {
-  const { cfg, update } = useNexus();
+  const { cfg, update, native } = useNexus();
   const s = cfg.safety;
   return <div className="nx-screen">
     <Header title="Ferramentas" />
@@ -21,6 +22,7 @@ export function ToolsScreen({ onLegacy }: { onLegacy: () => void }) {
     <Card title="O que a versão web faz e não faz">
       <p className="nx-hint">A versão web processa somente o áudio que o navegador entrega à página: entrada de microfone/interface de áudio e sinais de teste. Ela <strong>não</strong> equaliza Spotify, YouTube, jogos nem outros aplicativos. Isso depende dos aplicativos nativos de cada sistema, sujeitos às limitações do Android e do iOS.</p>
     </Card>
+    {native?.platform === 'android' && <Card title="Modo clássico (Android)"><p className="nx-hint">Abre o painel nativo anterior, com o equalizador de sistema, Bass Boost, Loudness e a atualização do app.</p><button className="nx-btn" onClick={openClassic}>Abrir modo clássico</button></Card>}
     <Card title="Equalizador simples (versão anterior)"><button className="nx-btn" onClick={onLegacy}>Abrir painel de 10 bandas</button></Card>
   </div>;
 }
