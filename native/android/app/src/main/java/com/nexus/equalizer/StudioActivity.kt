@@ -31,7 +31,8 @@ class StudioActivity : Activity() {
         window.statusBarColor = Color.parseColor("#0B0B0D")
         window.navigationBarColor = Color.parseColor("#0B0B0D")
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-        effects = NexusEffectManager(applicationContext).also { it.start() }
+        effects = NexusEffectManager.get(applicationContext).also { it.start() }
+        if (android.os.Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"), 1)
 
         val loader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
@@ -65,14 +66,21 @@ class StudioActivity : Activity() {
     override fun onBackPressed() { if (web.canGoBack()) web.goBack() else super.onBackPressed() }
 
     override fun onDestroy() {
-        // Effects live only while the app process lives; Android may stop the process in the background.
-        effects.stop()
+        // Effects keep running through EffectService while it is on; the UI is only a remote control.
         web.destroy()
         super.onDestroy()
     }
 
     inner class Bridge {
-        @JavascriptInterface fun apply(planJson: String): String = effects.apply(planJson)
+        @JavascriptInterface fun apply(planJson: String): String {
+            val result = effects.apply(planJson)
+            runOnUiThread {
+                val svc = Intent(this@StudioActivity, EffectService::class.java)
+                val on = effects.isEnabled()
+                try { if (on) startForegroundService(svc) else stopService(svc) } catch (_: Exception) { }
+            }
+            return result
+        }
         @JavascriptInterface fun status(): String = effects.status()
         @JavascriptInterface fun openClassic() { runOnUiThread { startActivity(Intent(this@StudioActivity, MainActivity::class.java)) } }
     }
