@@ -33,7 +33,7 @@ class DynamicsMapperTest {
         for (i in 1 until bands.size) assertTrue("cutoffs devem crescer", bands[i].cutoffHz > bands[i - 1].cutoffHz)
         assertEquals(20000f, bands.last().cutoffHz, 0.5f)
         // edge between 800 Hz and 1 kHz centres is their geometric mean (≈ 894 Hz)
-        assertEquals(894.4f, bands[freqs.indexOf(800.0)].cutoffHz, 1f)
+        assertEquals(894.4f, bands[16].cutoffHz, 1f)
     }
 
     @Test fun eqGainsAreCarriedAndClamped() {
