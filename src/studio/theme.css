@@ -99,7 +99,7 @@ body:has(.nx-app) { background: var(--nx-bg); color: var(--nx-text); }
 .nx-split { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 8px; } .nx-transfer { width: 40%; max-width: 150px; aspect-ratio: 1; background: #0b0b0d; border: 1px solid #2b2d33; border-radius: 10px; }
 .nx-tr-diag { stroke: #3a3c43; stroke-width: 1; fill: none; } .nx-tr-line { stroke: var(--nx-gold); stroke-width: 2; fill: none; } .nx-tr-thr { stroke: #ffffff30; stroke-dasharray: 3 3; }
 .nx-band { border-top: 1px solid #ffffff10; margin-top: 10px; padding-top: 6px; }
-.nx-mini { display: flex; gap: 6px; } .nx-mini button { width: 32px; height: 28px; border-radius: 8px; border: 1px solid var(--nx-line); background: var(--nx-bg2); font-weight: 700; font-size: 12px; cursor: pointer; } .nx-mini button.on { background: var(--nx-gold); color: #1a1405; }
+.nx-mini { display: flex; gap: 6px; align-items: center; } .nx-mini > button:not(.nx-toggle) { width: 32px; height: 28px; border-radius: 8px; border: 1px solid var(--nx-line); background: var(--nx-bg2); font-weight: 700; font-size: 12px; cursor: pointer; } .nx-mini button.on { background: var(--nx-gold); color: #1a1405; }
 
 /* display */
 .nx-display { position: relative; border-radius: 16px; overflow: hidden; background: linear-gradient(180deg, #101013, #0a0a0c); border: 1px solid var(--nx-line); }
@@ -128,3 +128,14 @@ body:has(.nx-app) { background: var(--nx-bg); color: var(--nx-text); }
 @media (min-width: 700px) { .nx-app { border-left: 1px solid var(--nx-line); border-right: 1px solid var(--nx-line); } }
 
 .nx-card .nx-hint, .nx-card .nx-meter + .nx-hint { margin-top: 10px; }
+
+/* forms (Room / Device) */
+.nx-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; align-items: center; } .nx-fields.three { grid-template-columns: repeat(3, 1fr); }
+.nx-fields.head { font-size: 11px; color: var(--nx-dim); margin-top: 0; }
+.nx-field { display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; color: var(--nx-silver); min-width: 0; }
+.nx-field > div { display: flex; align-items: center; gap: 6px; } .nx-field em { font-style: normal; font-size: 11px; color: var(--nx-dim); }
+.nx-field input, .nx-field select { width: 100%; min-width: 0; padding: 10px; border-radius: 10px; border: 1px solid var(--nx-line); background: var(--nx-bg2); color: var(--nx-text); font: 14px 'DM Mono', monospace; }
+.nx-mono { font: 11px 'DM Mono', monospace; color: var(--nx-gold); }
+.nx-h4 { margin: 14px 0 6px; font-size: 12px; color: var(--nx-silver); }
+.nx-plain { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.7; color: var(--nx-text); }
+.nx-steps { padding-left: 18px; }

@@ -19,6 +19,7 @@ export class NexusAudio {
   private stream: MediaStream | null = null;
   private config: NexusConfig = defaultConfig();
   private loudness = false;
+  outputId = '';
   constructor(private workletUrl: string | URL, private events: NexusAudioEvents = {}) {}
 
   get running(): boolean { return this.ctx?.state === 'running'; }
@@ -41,6 +42,7 @@ export class NexusAudio {
       this.post({ type: 'loudness', enabled: this.loudness });
     }
     await this.setSource(source, deviceId);
+    if (this.outputId) await this.setOutputDevice(this.outputId).catch(() => undefined);
     await this.ctx.resume();
   }
 
@@ -63,6 +65,18 @@ export class NexusAudio {
       this.src = pinkNoise(this.ctx, 0.1);
     }
     this.src.connect(this.node);
+  }
+
+  /** True when the browser can route an AudioContext to a chosen output (Chromium). Safari/Firefox cannot. */
+  static get canSelectOutput(): boolean { return typeof AudioContext !== 'undefined' && 'setSinkId' in AudioContext.prototype; }
+  get latencyInfo(): { base: number; output: number; channels: number } | null {
+    const c = this.ctx as (AudioContext & { outputLatency?: number }) | null;
+    return c ? { base: c.baseLatency, output: c.outputLatency ?? 0, channels: c.destination.maxChannelCount } : null;
+  }
+  async setOutputDevice(deviceId: string): Promise<void> {
+    this.outputId = deviceId;
+    const c = this.ctx as (AudioContext & { setSinkId?: (id: string) => Promise<void> }) | null;
+    if (c?.setSinkId) await c.setSinkId(deviceId);
   }
 
   setConfig(cfg: NexusConfig): void { this.config = cfg; this.post({ type: 'config', config: cfg }); }

@@ -6,13 +6,13 @@ export type ModuleId = 'eq' | 'dyn' | 'room' | 'phones' | 'analyzer' | 'stereo' 
 export const MODULES: { id: ModuleId; icon: string; label: string; ready: boolean }[] = [
   { id: 'eq', icon: 'eq', label: 'Equalizador Studio', ready: true },
   { id: 'dyn', icon: 'dyn', label: 'Dynamics Studio', ready: true },
-  { id: 'room', icon: 'room', label: 'Room Studio', ready: false },
+  { id: 'room', icon: 'room', label: 'Room Studio', ready: true },
   { id: 'phones', icon: 'phones', label: 'Headphone Studio', ready: true },
   { id: 'analyzer', icon: 'analyzer', label: 'Analyzer', ready: true },
   { id: 'stereo', icon: 'stereo', label: 'Stereo Studio', ready: true },
   { id: 'voice', icon: 'voice', label: 'Voice Studio', ready: true },
   { id: 'bass', icon: 'bass', label: 'Bass Studio', ready: true },
-  { id: 'device', icon: 'device', label: 'Device Studio', ready: false },
+  { id: 'device', icon: 'device', label: 'Device Studio', ready: true },
 ];
 
 const SOURCES: { id: InputSource; label: string }[] = [{ id: 'pink-noise', label: 'Ruído rosa' }, { id: 'sine', label: 'Tom 1 kHz' }, { id: 'input', label: 'Entrada' }];

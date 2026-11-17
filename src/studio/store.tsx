@@ -36,6 +36,8 @@ interface Store {
   warnings: SafetyWarning[];
   spectrum: (out: Float32Array<ArrayBuffer>) => boolean;
   setLoudness: (on: boolean) => void;
+  setOutputDevice: (id: string) => Promise<void>;
+  latencyInfo: () => { base: number; output: number; channels: number } | null;
   sampleRate: number;
   userPresets: Preset[];
   setUserPresets: (p: Preset[]) => void;
@@ -84,6 +86,7 @@ export function NexusProvider({ children }: { children: ReactNode }) {
       if (audio.current?.running) { await audio.current.stop(); setRunning(false); setMeters(EMPTY_METERS); return; }
       audio.current = new NexusAudio(workletUrl, { onMeters: (m, r) => { latest.current = { m, r }; } });
       audio.current.setConfig(cfgRef.current);
+      audio.current.outputId = outputId.current;
       await audio.current.start(source);
       setRunning(true);
     } catch (e) {
@@ -100,6 +103,9 @@ export function NexusProvider({ children }: { children: ReactNode }) {
 
   const spectrum = useCallback((out: Float32Array<ArrayBuffer>) => { if (!audio.current?.running || !audio.current.analyser) return false; audio.current.spectrum(out); return true; }, []);
 
+  const outputId = useRef('');
+  const setOutputDevice = useCallback(async (id: string) => { outputId.current = id; if (audio.current) { audio.current.outputId = id; if (audio.current.running) await audio.current.setOutputDevice(id); } }, []);
+  const latencyInfo = useCallback(() => audio.current?.latencyInfo ?? null, []);
   const loudnessWanted = useRef(false);
   const setLoudness = useCallback((on: boolean) => { loudnessWanted.current = on; audio.current?.setLoudness(on); }, []);
   useEffect(() => { if (running) audio.current?.setLoudness(loudnessWanted.current); }, [running]);
@@ -133,6 +139,6 @@ export function NexusProvider({ children }: { children: ReactNode }) {
   const warnings = useMemo(() => (running ? evaluateSafety(cfg, report, meters) : []), [running, cfg, report, meters]);
   const presets = useMemo(() => [...factoryPresets(), ...userPresets], [userPresets]);
 
-  const value: Store = { cfg, update, replace, running, source, setSource, toggleRun, error, meters, report, warnings, spectrum, setLoudness, sampleRate: audio.current?.sampleRate ?? 48000, userPresets, setUserPresets, presets, updateAvailable, updateInstalling, applyUpdate };
+  const value: Store = { cfg, update, replace, running, source, setSource, toggleRun, error, meters, report, warnings, spectrum, setLoudness, setOutputDevice, latencyInfo, sampleRate: audio.current?.sampleRate ?? 48000, userPresets, setUserPresets, presets, updateAvailable, updateInstalling, applyUpdate };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

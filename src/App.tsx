@@ -8,7 +8,8 @@ import { BassScreen, HeadphoneScreen, StereoScreen, VoiceScreen } from './studio
 import { AnalyzerScreen } from './studio/screens/AnalyzerScreen.tsx';
 import { PresetsScreen } from './studio/screens/PresetsScreen.tsx';
 import { ToolsScreen } from './studio/screens/ToolsScreen.tsx';
-import { ComingSoon } from './studio/screens/ComingSoon.tsx';
+import { RoomScreen } from './studio/screens/RoomScreen.tsx';
+import { DeviceScreen } from './studio/screens/DeviceScreen.tsx';
 import LegacyApp from './LegacyApp.tsx';
 import './studio/theme.css';
 
@@ -25,7 +26,7 @@ export default function App() {
   const screens: Record<ModuleId, JSX.Element> = {
     eq: <EqualizerScreen onBack={back} />, dyn: <DynamicsScreen onBack={back} />, phones: <HeadphoneScreen onBack={back} />,
     analyzer: <AnalyzerScreen onBack={back} />, stereo: <StereoScreen onBack={back} />, voice: <VoiceScreen onBack={back} />, bass: <BassScreen onBack={back} />,
-    room: <ComingSoon id="room" onBack={back} />, device: <ComingSoon id="device" onBack={back} />,
+    room: <RoomScreen onBack={back} />, device: <DeviceScreen onBack={back} />,
   };
   const go = (t: Tab) => { setTab(t); setModule(null); };
 
