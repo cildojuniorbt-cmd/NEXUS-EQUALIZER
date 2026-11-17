@@ -44,7 +44,10 @@ class NexusEffectManager(private val context: Context) {
     }
 
     fun stop() {
-        if (registered) { try { context.unregisterReceiver(receiver) } catch (_: Exception) { } registered = false }
+        if (registered) {
+            try { context.unregisterReceiver(receiver) } catch (_: Exception) { }
+            registered = false
+        }
         releaseAll()
     }
 
