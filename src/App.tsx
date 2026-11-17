@@ -1,176 +1,42 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { AudioLines, Power, RotateCcw, SlidersHorizontal, Save, Trash2, Activity, RefreshCw, Download } from 'lucide-react';
+import { useState } from 'react';
+import { NexusProvider } from './studio/store.tsx';
+import { Icon } from './studio/ui.tsx';
+import { HomeScreen, type ModuleId } from './studio/screens/HomeScreen.tsx';
+import { EqualizerScreen } from './studio/screens/EqualizerScreen.tsx';
+import { DynamicsScreen } from './studio/screens/DynamicsScreen.tsx';
+import { BassScreen, HeadphoneScreen, StereoScreen, VoiceScreen } from './studio/screens/PanelScreens.tsx';
+import { AnalyzerScreen } from './studio/screens/AnalyzerScreen.tsx';
+import { PresetsScreen } from './studio/screens/PresetsScreen.tsx';
+import { ToolsScreen } from './studio/screens/ToolsScreen.tsx';
+import { RoomScreen } from './studio/screens/RoomScreen.tsx';
+import { DeviceScreen } from './studio/screens/DeviceScreen.tsx';
+import LegacyApp from './LegacyApp.tsx';
+import './studio/theme.css';
 
-const BANDS = [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
-const PRESETS = {
-  Flat: [0,0,0,0,0,0,0,0,0,0],
-  'Bass Boost': [5,4,3,2,0,0,0,0,0,0],
-  Vocal: [-2,-1,0,2,3,3,2,1,0,-1],
-  Rock: [4,3,1,-1,-2,1,3,4,4,3],
-  Jazz: [3,2,1,2,-1,-1,0,2,3,3],
-  'Treble Boost': [0,0,0,0,0,1,2,3,4,4],
-};
-type PresetName = keyof typeof PRESETS;
-type SavedPreset = { gains: number[]; output: number };
+type Tab = 'home' | 'presets' | 'tools';
 
 export default function App() {
-  const [gains, setGains] = useState<number[]>(PRESETS.Flat);
-  const [output, setOutput] = useState(0);
-  const [enabled, setEnabled] = useState(true);
-  const [preset, setPreset] = useState<PresetName>('Flat');
-  const [custom, setCustom] = useState<Record<string, SavedPreset>>({});
-  const [name, setName] = useState('');
-  const [tab, setTab] = useState<'eq'|'presets'>('eq');
-  const [saved, setSaved] = useState(false);
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [updateInstalling, setUpdateInstalling] = useState(false);
-  const applyingUpdate = useRef(false);
+  const [tab, setTab] = useState<Tab>('home');
+  const [module, setModule] = useState<ModuleId | null>(null);
+  const [legacy, setLegacy] = useState(false);
 
-  useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
-    let registration: ServiceWorkerRegistration | undefined;
-    let intervalId: number | undefined;
-    let disposed = false;
+  if (legacy) return <div><button className="nx-legacy-back" onClick={() => setLegacy(false)}>← Voltar ao NEXUS EQ Studio</button><LegacyApp /></div>;
 
-    const inspectRegistration = () => {
-      if (!disposed && registration?.waiting && navigator.serviceWorker.controller) setUpdateAvailable(true);
-    };
-    const handleControllerChange = () => {
-      if (applyingUpdate.current) window.location.reload();
-    };
-    const checkForUpdates = () => {
-      if (document.visibilityState === 'visible') registration?.update().catch(() => undefined);
-    };
-    const handleUpdateFound = () => {
-      registration?.installing?.addEventListener('statechange', inspectRegistration);
-    };
+  const back = () => setModule(null);
+  const screens: Record<ModuleId, JSX.Element> = {
+    eq: <EqualizerScreen onBack={back} />, dyn: <DynamicsScreen onBack={back} />, phones: <HeadphoneScreen onBack={back} />,
+    analyzer: <AnalyzerScreen onBack={back} />, stereo: <StereoScreen onBack={back} />, voice: <VoiceScreen onBack={back} />, bass: <BassScreen onBack={back} />,
+    room: <RoomScreen onBack={back} />, device: <DeviceScreen onBack={back} />,
+  };
+  const go = (t: Tab) => { setTab(t); setModule(null); };
 
-    navigator.serviceWorker.ready.then(current => {
-      if (disposed || !current) return;
-      registration = current;
-      inspectRegistration();
-      registration.addEventListener('updatefound', handleUpdateFound);
-      window.addEventListener('focus', checkForUpdates);
-      intervalId = window.setInterval(checkForUpdates, 6 * 60 * 60 * 1000);
-      checkForUpdates();
-    }).catch(() => undefined);
-    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
-
-    return () => {
-      disposed = true;
-      if (intervalId) window.clearInterval(intervalId);
-      registration?.removeEventListener('updatefound', handleUpdateFound);
-      window.removeEventListener('focus', checkForUpdates);
-      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
-    };
-  }, []);
-
-  function applyAvailableUpdate() {
-    navigator.serviceWorker?.getRegistration().then(registration => {
-      if (!registration?.waiting) { setUpdateAvailable(false); return; }
-      applyingUpdate.current = true;
-      setUpdateInstalling(true);
-      registration.waiting.postMessage({ type: 'NEXUS_SKIP_WAITING' });
-    }).catch(() => setUpdateInstalling(false));
-  }
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('nexus-equalizer-control-v1');
-      if (raw) {
-        const data = JSON.parse(raw);
-        if (Array.isArray(data.gains) && data.gains.length === BANDS.length) setGains(data.gains);
-        if (typeof data.output === 'number') setOutput(data.output);
-        if (typeof data.enabled === 'boolean') setEnabled(data.enabled);
-        if (data.custom && typeof data.custom === 'object') setCustom(data.custom);
-        if (data.preset && data.preset in PRESETS) setPreset(data.preset);
-      }
-    } catch { /* Keep defaults if local storage is unavailable. */ }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('nexus-equalizer-control-v1', JSON.stringify({ gains, output, enabled, custom, preset }));
-      setSaved(true);
-      const id = window.setTimeout(() => setSaved(false), 1200);
-      return () => window.clearTimeout(id);
-    } catch { setSaved(false); }
-  }, [gains, output, enabled, custom, preset]);
-
-  const curve = useMemo(() => gains.map((gain, i) => ({ x: 28 + i * 8.2, y: 50 - gain * 2.2 })), [gains]);
-  const path = curve.map((p, i) => `${i ? 'L' : 'M'} ${p.x} ${p.y}`).join(' ');
-
-  function applyPreset(key: PresetName) {
-    setPreset(key);
-    setGains([...PRESETS[key]]);
-  }
-  function savePreset() {
-    const clean = name.trim();
-    if (!clean) return;
-    setCustom(current => ({ ...current, [clean]: { gains: [...gains], output } }));
-    setName('');
-  }
-  function loadCustom(key: string) {
-    const item = custom[key];
-    if (!item) return;
-    setGains([...item.gains]);
-    setOutput(item.output);
-    setPreset('Flat');
-  }
-  function reset() { setGains([...PRESETS.Flat]); setOutput(0); setPreset('Flat'); }
-
-  return <main className="app-shell">
-    <header className="topbar">
-      <div className="brand"><div className="brand-mark"><AudioLines size={22}/></div><div><strong>NEXUS</strong><span>EQUALIZER</span></div></div>
-      <div className="top-status"><span className="status-dot active"/> CONTROL PANEL <span className="save-state">{saved ? '· SALVO' : ''}</span></div>
-    </header>
-
-    {updateAvailable && <section className="update-banner" role="status" aria-live="polite">
-      <div className="update-banner-icon"><Download size={18}/></div>
-      <div className="update-banner-copy"><strong>Uma nova versão do NEXUS EQ está disponível</strong><span>Atualize agora para receber as melhorias mais recentes. Seus ajustes salvos serão preservados.</span></div>
-      <button className="update-action" onClick={applyAvailableUpdate} disabled={updateInstalling}><RefreshCw size={15} className={updateInstalling ? 'spin' : ''}/>{updateInstalling ? 'ATUALIZANDO' : 'ATUALIZAR'}</button>
-    </section>}
-
-    <section className="hero">
-      <div><p className="eyebrow">PRECISÃO SONORA · CONTROLE DE EQUALIZAÇÃO</p><h1>Seu som.<br/><em>Seu equilíbrio.</em></h1><p className="hero-copy">Um equalizador dedicado. Sem player, sem biblioteca, sem importar músicas.</p></div>
-      <div className="hero-icon"><AudioLines size={54} strokeWidth={1.2}/></div>
-    </section>
-
-    <section className="notice-card">
-      <div className="notice-icon"><Activity size={18}/></div>
-      <div><strong>Interface de controle Web</strong><p>Esta versão permite configurar e salvar seus ajustes. O navegador não pode equalizar o áudio de outros aplicativos do celular. A integração com o áudio do sistema continuará na versão nativa.</p></div>
-    </section>
-
-    <section className="eq-card">
-      <div className="section-heading"><div><p className="section-kicker">PROCESSAMENTO</p><h2>Equalizador gráfico</h2></div><button className={'power-button ' + (enabled ? 'on' : '')} onClick={() => setEnabled(v => !v)}><Power size={16}/>{enabled ? 'ATIVO' : 'BYPASS'}</button></div>
-      <div className="eq-visual">
-        <div className="curve-labels"><span>+12 dB</span><span>0 dB</span><span>−12 dB</span></div>
-        <svg viewBox="0 0 112 100" preserveAspectRatio="none" role="img" aria-label="Curva de equalização atual">
-          {[24,50,76].map(y => <line key={y} x1="20" x2="108" y1={y} y2={y} stroke="#e6e8eb" strokeDasharray="1.5 1.5"/>)}
-          <path d={path} fill="none" stroke={enabled ? '#303840' : '#aeb4bb'} strokeWidth="1.7" vectorEffect="non-scaling-stroke"/>
-          {curve.map((p,i) => <circle key={i} cx={p.x} cy={p.y} r="1.4" fill={enabled ? '#303840' : '#aeb4bb'}/>)}
-        </svg>
-      </div>
-      <div className="band-grid">{BANDS.map((frequency,index) => <label className="band" key={frequency}>
-        <span className="band-value">{enabled ? (gains[index] > 0 ? '+' : '') + gains[index].toFixed(1) : 'OFF'}</span>
-        <input aria-label={frequency + ' Hz'} type="range" min="-12" max="12" step=".5" value={gains[index]} disabled={!enabled} onChange={e => { setGains(v => v.map((x,i) => i === index ? Number(e.target.value) : x)); setPreset('Flat'); }}/>
-        <span className="band-frequency">{frequency >= 1000 ? (frequency/1000)+'k' : frequency}</span>
-      </label>)}</div>
-      <div className="eq-footer"><label>GANHO DE SAÍDA <strong>{output > 0 ? '+' : ''}{output.toFixed(1)} dB</strong></label><input aria-label="Ganho de saída" type="range" min="-12" max="6" step=".5" value={output} onChange={e => setOutput(Number(e.target.value))}/><button className="reset-button" onClick={reset}><RotateCcw size={14}/> Redefinir</button></div>
-    </section>
-
-    <section className="presets-card">
-      <div className="section-heading"><div><p className="section-kicker">AJUSTE RÁPIDO</p><h2>Perfis de equalização</h2></div><SlidersHorizontal size={19}/></div>
-      <div className="preset-list">{(Object.keys(PRESETS) as PresetName[]).map(key => <button key={key} className={preset === key ? 'preset active-preset' : 'preset'} onClick={() => applyPreset(key)}>{key}</button>)}</div>
-    </section>
-
-    <section className="presets-card">
-      <div className="section-heading"><div><p className="section-kicker">PERSONALIZAÇÃO</p><h2>Meus perfis</h2></div></div>
-      <div className="save-preset-row"><input aria-label="Nome do perfil" placeholder="Nome do perfil" value={name} maxLength={28} onChange={e => setName(e.target.value)}/><button className="save-preset-button" disabled={!name.trim()} onClick={savePreset}><Save size={15}/> Salvar</button></div>
-      <div className="custom-preset-list">{Object.entries(custom).map(([key]) => <div className="custom-preset" key={key}><button onClick={() => loadCustom(key)}>{key}</button><button className="delete-preset" aria-label={'Excluir '+key} onClick={() => setCustom(v => { const next = {...v}; delete next[key]; return next; })}><Trash2 size={14}/></button></div>)}</div>
-      <p className="module-copy">Seus ajustes ficam salvos neste navegador.</p>
-    </section>
-
-    <footer><span>NEXUS EQUALIZER</span><span>WEB CONTROL · VERSÃO 0.1.1</span></footer>
-  </main>;
+  return <NexusProvider>
+    <div className="nx-app">
+      <main>{module ? screens[module] : tab === 'home' ? <HomeScreen open={setModule} /> : tab === 'presets' ? <PresetsScreen /> : <ToolsScreen onLegacy={() => setLegacy(true)} />}</main>
+      <nav className="nx-nav" aria-label="Navegação principal">
+        {([['home', 'Início', 'home'], ['presets', 'Presets', 'presets'], ['tools', 'Ferramentas', 'tools']] as const).map(([id, label, icon]) =>
+          <button key={id} className={tab === id && !module ? 'on' : ''} aria-current={tab === id && !module ? 'page' : undefined} onClick={() => go(id)}><Icon name={icon} size={22} /><span>{label}</span></button>)}
+      </nav>
+    </div>
+  </NexusProvider>;
 }
