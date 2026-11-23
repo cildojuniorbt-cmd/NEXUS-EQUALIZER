@@ -53,6 +53,7 @@ interface Store {
   applyUpdate: () => void;
   nativeUpdate: NativeUpdateResult | null;
   checkNativeUpdate: () => void;
+  nativeUpdateChecking: boolean;
   installNativeUpdate: () => void;
 }
 
@@ -135,14 +136,17 @@ export function NexusProvider({ children }: { children: ReactNode }) {
   const native: NativeState | null = platform && plan ? { platform, on: nativeOn, status: nativeStatus, unsupported: plan.unsupported, toggle: () => setNativeOn(v => !v) } : null;
 
   const [nativeUpdate, setNativeUpdate] = useState<NativeUpdateResult | null>(null);
-  const checkNativeUpdate = useCallback(() => { if (platform === 'android') checkNativeUpdates(); }, [platform]);
+  const [nativeUpdateChecking, setNativeUpdateChecking] = useState(false);
+  const checkNativeUpdate = useCallback(() => { if (platform === 'android') { setNativeUpdateChecking(true); checkNativeUpdates(); } }, [platform]);
   const installNativeUpdateAction = useCallback(() => { if (platform === 'android') installNativeUpdate(); }, [platform]);
   useEffect(() => {
     if (platform !== 'android') return;
     window.__nexusUpdateResult = json => {
       try { setNativeUpdate(JSON.parse(json) as NativeUpdateResult); }
       catch { setNativeUpdate({ status: 'error', message: 'Resposta inválida do servidor de atualizações.' }); }
+      finally { setNativeUpdateChecking(false); }
     };
+    setNativeUpdateChecking(true);
     checkNativeUpdates();
     return () => { window.__nexusUpdateResult = undefined; };
   }, [platform]);
@@ -175,6 +179,6 @@ export function NexusProvider({ children }: { children: ReactNode }) {
   const warnings = useMemo(() => (running ? evaluateSafety(cfg, report, meters) : []), [running, cfg, report, meters]);
   const presets = useMemo(() => [...factoryPresets(), ...userPresets], [userPresets]);
 
-  const value: Store = { native, cfg, update, replace, running, source, setSource, toggleRun, error, meters, report, warnings, spectrum, setLoudness, setOutputDevice, latencyInfo, sampleRate: audio.current?.sampleRate ?? 48000, userPresets, setUserPresets, presets, updateAvailable, updateInstalling, applyUpdate, nativeUpdate, checkNativeUpdate, installNativeUpdate: installNativeUpdateAction };
+  const value: Store = { native, cfg, update, replace, running, source, setSource, toggleRun, error, meters, report, warnings, spectrum, setLoudness, setOutputDevice, latencyInfo, sampleRate: audio.current?.sampleRate ?? 48000, userPresets, setUserPresets, presets, updateAvailable, updateInstalling, applyUpdate, nativeUpdate, checkNativeUpdate, nativeUpdateChecking, installNativeUpdate: installNativeUpdateAction };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
