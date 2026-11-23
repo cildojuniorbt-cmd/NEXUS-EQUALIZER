@@ -38,7 +38,8 @@ object InAppUpdater {
                     setRequestProperty("User-Agent", "NEXUS-EQUALIZER-Android")
                 }
                 try {
-                    if (connection.responseCode != 200) error("Servidor de atualizações indisponível.")
+                    if (connection.responseCode == 404) error("Ainda não há uma versão publicada para atualização.")
+                    if (connection.responseCode != 200) error("Servidor de atualizações indisponível (HTTP ${connection.responseCode}).")
                     val release = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
                     val tag = release.optString("tag_name").removePrefix("v")
                     val apk = release.getJSONArray("assets").let { assets ->
