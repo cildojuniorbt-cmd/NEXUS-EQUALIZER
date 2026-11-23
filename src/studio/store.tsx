@@ -7,7 +7,7 @@ import { factoryPresets, type Preset } from '../dsp/presets.ts';
 import { NexusAudio, type InputSource } from '../audio/controller.ts';
 import workletUrl from '../audio/worklet.ts?worker&url';
 import { buildNativePlan } from '../native/plan.ts';
-import { nativePlatform, readStatus, sendPlan, type NativeStatus } from '../native/bridge.ts';
+import { nativePlatform, readStatus, sendPlan, checkNativeUpdates, installNativeUpdate, type NativeStatus, type NativeUpdateResult } from '../native/bridge.ts';
 
 const CFG_KEY = 'nexus-eq-studio-config-v1';
 const PRESET_KEY = 'nexus-eq-studio-presets-v1';
@@ -51,6 +51,9 @@ interface Store {
   updateAvailable: boolean;
   updateInstalling: boolean;
   applyUpdate: () => void;
+  nativeUpdate: NativeUpdateResult | null;
+  checkNativeUpdate: () => void;
+  installNativeUpdate: () => void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -131,6 +134,19 @@ export function NexusProvider({ children }: { children: ReactNode }) {
   useEffect(() => { if (!platform) return; window.__nexusNativeStatus = json => { try { setNativeStatus(JSON.parse(json) as NativeStatus); } catch { /* ignore */ } }; return () => { window.__nexusNativeStatus = undefined; }; }, [platform]);
   const native: NativeState | null = platform && plan ? { platform, on: nativeOn, status: nativeStatus, unsupported: plan.unsupported, toggle: () => setNativeOn(v => !v) } : null;
 
+  const [nativeUpdate, setNativeUpdate] = useState<NativeUpdateResult | null>(null);
+  const checkNativeUpdate = useCallback(() => { if (platform === 'android') checkNativeUpdates(); }, [platform]);
+  const installNativeUpdateAction = useCallback(() => { if (platform === 'android') installNativeUpdate(); }, [platform]);
+  useEffect(() => {
+    if (platform !== 'android') return;
+    window.__nexusUpdateResult = json => {
+      try { setNativeUpdate(JSON.parse(json) as NativeUpdateResult); }
+      catch { setNativeUpdate({ status: 'error', message: 'Resposta inválida do servidor de atualizações.' }); }
+    };
+    checkNativeUpdates();
+    return () => { window.__nexusUpdateResult = undefined; };
+  }, [platform]);
+
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [updateInstalling, setUpdateInstalling] = useState(false);
   const applying = useRef(false);
@@ -159,6 +175,6 @@ export function NexusProvider({ children }: { children: ReactNode }) {
   const warnings = useMemo(() => (running ? evaluateSafety(cfg, report, meters) : []), [running, cfg, report, meters]);
   const presets = useMemo(() => [...factoryPresets(), ...userPresets], [userPresets]);
 
-  const value: Store = { native, cfg, update, replace, running, source, setSource, toggleRun, error, meters, report, warnings, spectrum, setLoudness, setOutputDevice, latencyInfo, sampleRate: audio.current?.sampleRate ?? 48000, userPresets, setUserPresets, presets, updateAvailable, updateInstalling, applyUpdate };
+  const value: Store = { native, cfg, update, replace, running, source, setSource, toggleRun, error, meters, report, warnings, spectrum, setLoudness, setOutputDevice, latencyInfo, sampleRate: audio.current?.sampleRate ?? 48000, userPresets, setUserPresets, presets, updateAvailable, updateInstalling, applyUpdate, nativeUpdate, checkNativeUpdate, installNativeUpdate: installNativeUpdateAction };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
