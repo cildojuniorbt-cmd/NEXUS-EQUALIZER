@@ -18,7 +18,7 @@ export const MODULES: { id: ModuleId; icon: string; label: string; ready: boolea
 const SOURCES: { id: InputSource; label: string }[] = [{ id: 'pink-noise', label: 'Ruído rosa' }, { id: 'sine', label: 'Tom 1 kHz' }, { id: 'input', label: 'Entrada' }];
 
 export function HomeScreen({ open }: { open: (m: ModuleId) => void }) {
-  const { native, cfg, update, running, toggleRun, source, setSource, error, warnings, meters, updateAvailable, updateInstalling, applyUpdate, nativeUpdate, checkNativeUpdate, installNativeUpdate } = useNexus();
+  const { native, cfg, update, running, toggleRun, source, setSource, error, warnings, meters, updateAvailable, updateInstalling, applyUpdate, nativeUpdate, checkNativeUpdate, nativeUpdateChecking, installNativeUpdate } = useNexus();
   return <div className="nx-screen">
     <div className="nx-brand"><svg viewBox="0 0 60 24" width="46" height="20" aria-hidden><path d="M1 12h8l3-9 5 18 5-14 3 5h9l2-3 3 3h8" fill="none" stroke="#f2b632" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg><h1>NEXUS <em>EQ</em></h1><small>AUDIO STUDIO MOBILE</small></div>
     {updateAvailable && <div className="nx-update" role="status"><div><strong>Nova versão disponível</strong><small>Atualize para usar as últimas melhorias.</small></div><button className="nx-btn gold" disabled={updateInstalling} onClick={applyUpdate}>{updateInstalling ? 'Atualizando…' : 'Atualizar'}</button></div>}
@@ -29,7 +29,7 @@ export function HomeScreen({ open }: { open: (m: ModuleId) => void }) {
         {nativeUpdate.notes && <div className="nx-hint" style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>{nativeUpdate.notes}</div>}
         <button className="nx-btn gold" style={{ width: "100%", marginTop: 12 }} onClick={installNativeUpdate}>Baixar e instalar atualização</button>
       </>}
-      <button className="nx-btn" style={{ width: "100%", marginTop: 8 }} onClick={checkNativeUpdate}>Verificar atualizações</button>
+      <button className="nx-btn gold" style={{ width: "100%", marginTop: 8 }} disabled={nativeUpdateChecking} onClick={checkNativeUpdate}>{nativeUpdateChecking ? "Verificando…" : "Verificar atualizações"}</button>
     </section>}
 
     {native ? <>
