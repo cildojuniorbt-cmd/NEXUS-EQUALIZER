@@ -14,6 +14,7 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import org.json.JSONObject
 import androidx.webkit.WebViewAssetLoader
 
 /**
@@ -71,6 +72,13 @@ class StudioActivity : Activity() {
         super.onDestroy()
     }
 
+    @Volatile private var pendingUpdate: InAppUpdater.Update? = null
+
+    private fun notifyUpdateUi(payload: JSONObject) {
+        val encoded = JSONObject.quote(payload.toString())
+        runOnUiThread { if (::web.isInitialized) web.evaluateJavascript("window.__nexusUpdateResult && window.__nexusUpdateResult($encoded)", null) }
+    }
+
     inner class Bridge {
         @JavascriptInterface fun apply(planJson: String): String {
             val result = effects.apply(planJson)
@@ -82,6 +90,26 @@ class StudioActivity : Activity() {
             return result
         }
         @JavascriptInterface fun status(): String = effects.status()
+        @JavascriptInterface fun checkUpdates() {
+            InAppUpdater.check(this@StudioActivity) { result ->
+                result.onSuccess { update ->
+                    pendingUpdate = update
+                    val payload = if (update == null) JSONObject().put("status", "current").put("message", "Você já está usando a versão mais recente.")
+                    else JSONObject().put("status", "available").put("version", update.version).put("notes", update.notes).put("message", "Nova versão disponível: ${update.version}")
+                    notifyUpdateUi(payload)
+                }.onFailure { error ->
+                    pendingUpdate = null
+                    notifyUpdateUi(JSONObject().put("status", "error").put("message", error.message ?: "Não foi possível verificar atualizações."))
+                }
+            }
+        }
+        @JavascriptInterface fun installUpdate() {
+            val update = pendingUpdate
+            if (update == null) { notifyUpdateUi(JSONObject().put("status", "error").put("message", "Verifique atualizações novamente antes de instalar.")); return }
+            InAppUpdater.downloadAndInstall(this@StudioActivity, update) { message ->
+                notifyUpdateUi(JSONObject().put("status", "installing").put("message", message).put("version", update.version).put("notes", update.notes))
+            }
+        }
         @JavascriptInterface fun openClassic() { runOnUiThread { startActivity(Intent(this@StudioActivity, MainActivity::class.java)) } }
     }
 }
