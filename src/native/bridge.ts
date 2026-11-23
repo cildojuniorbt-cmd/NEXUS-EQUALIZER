@@ -9,12 +9,14 @@ export interface NativeStatus {
   sessions?: number;
   api?: number;
 }
-interface AndroidBridge { apply(planJson: string): string; status(): string; openClassic?(): void }
+export interface NativeUpdateResult { status: 'available' | 'current' | 'error' | 'installing'; message: string; version?: string; notes?: string }
+interface AndroidBridge { apply(planJson: string): string; status(): string; openClassic?(): void; checkUpdates?(): void; installUpdate?(): void }
 declare global {
   interface Window {
     NexusNative?: AndroidBridge;
     webkit?: { messageHandlers?: { nexus?: { postMessage(m: unknown): void } } };
     __nexusNativeStatus?: (json: string) => void;
+    __nexusUpdateResult?: (json: string) => void;
   }
 }
 
@@ -33,3 +35,6 @@ export function readStatus(): NativeStatus | null {
   try { return nativePlatform() === 'android' ? (JSON.parse(window.NexusNative!.status()) as NativeStatus) : null; } catch { return null; }
 }
 export const openClassic = (): void => { window.NexusNative?.openClassic?.(); };
+
+export const checkNativeUpdates = (): void => { window.NexusNative?.checkUpdates?.(); };
+export const installNativeUpdate = (): void => { window.NexusNative?.installUpdate?.(); };
