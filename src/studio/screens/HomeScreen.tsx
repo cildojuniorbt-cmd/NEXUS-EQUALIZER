@@ -29,7 +29,7 @@ export function HomeScreen({ open }: { open: (m: ModuleId) => void }) {
         {nativeUpdate.notes && <div className="nx-hint" style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>{nativeUpdate.notes}</div>}
         <button className="nx-btn gold" style={{ width: "100%", marginTop: 12 }} onClick={installNativeUpdate}>Baixar e instalar atualização</button>
       </>}
-      <button className="nx-btn gold" style={{ width: "100%", marginTop: 8 }} disabled={nativeUpdateChecking} onClick={checkNativeUpdate}>{nativeUpdateChecking ? "Verificar novamente" : "Verificar atualizações"}</button>
+      <button className="nx-btn gold" style={{ width: "100%", marginTop: 8 }} onClick={checkNativeUpdate}>{nativeUpdateChecking ? "Verificar novamente" : "Verificar atualizações"}</button>
     </section>}
 
     {native ? <>
