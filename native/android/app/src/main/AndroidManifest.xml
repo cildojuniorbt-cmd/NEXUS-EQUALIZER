@@ -10,6 +10,8 @@
     <application
         android:allowBackup="true"
         android:label="NEXUS EQUALIZER"
+        android:icon="@drawable/ic_launcher"
+        android:roundIcon="@drawable/ic_launcher"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:supportsRtl="true">
         <provider
